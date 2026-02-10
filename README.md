@@ -16,11 +16,47 @@ This is a learning project focused on building a real-world application with Pyt
 
 🚧 In development
 
+## Development
+
+### Prerequisites
+
+- Python 3.13+
+- Node.js 22+
+
+### Setup
+
+```bash
+# Backend
+cd backend
+/usr/local/opt/python@3.13/bin/python3.13 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+
+# Frontend
+cd frontend
+npm install
+```
+
+### Commands
+
+All commands run from project root:
+
+| Command | Description |
+|---------|-------------|
+| `make test-backend` | Run backend tests |
+| `make lint-backend` | Lint backend code |
+| `make format-backend` | Format backend code |
+| `make run-backend` | Start backend server |
+| `make test-frontend` | Run frontend tests |
+| `make lint-frontend` | Lint frontend code |
+| `make format-frontend` | Format frontend code |
+
 ## Game Rules
 
-Based on the original 1970 3M Regatta board game. See `regatta_game_rules.pdf` for the complete ruleset.
+Based on the original 1970 3M Regatta board game.
 
 Key mechanics:
+
 - Wind direction affects movement speed (broad reach fastest, beating slowest)
 - Spinnaker cards boost downwind speed
 - Puff cards provide tactical advantages
