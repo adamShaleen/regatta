@@ -12,7 +12,7 @@ class WindDirection(Enum):
     NORTH_WEST = 315
 
 
-BoatHeading = WindDirection
+Heading = WindDirection
 
 
 class PointOfSail(Enum):
@@ -24,26 +24,29 @@ class PointOfSail(Enum):
 
     @property
     def speed(self) -> int:
-        speeds = {
-            PointOfSail.LUFFING: 0,
-            PointOfSail.BEATING: 1,
-            PointOfSail.BEAM_REACHING: 2,
-            PointOfSail.RUNNING: 2,
-            PointOfSail.BROAD_REACHING: 3,
-        }
-        return speeds[self]
+        return _SPEEDS[self]
 
 
-def get_point_of_sail(wind: WindDirection, boat_heading: BoatHeading) -> PointOfSail:
-    diff: int = abs(wind.value - boat_heading.value)
+_SPEEDS = {
+    PointOfSail.LUFFING: 0,
+    PointOfSail.BEATING: 1,
+    PointOfSail.BEAM_REACHING: 2,
+    PointOfSail.RUNNING: 2,
+    PointOfSail.BROAD_REACHING: 3,
+}
+
+
+_ANGLE_TO_POINT_OF_SAIL = {
+    0: PointOfSail.LUFFING,
+    45: PointOfSail.BEATING,
+    90: PointOfSail.BEAM_REACHING,
+    135: PointOfSail.BROAD_REACHING,
+    180: PointOfSail.RUNNING,
+}
+
+
+def get_point_of_sail(wind: WindDirection, heading: Heading) -> PointOfSail:
+    diff: int = abs(wind.value - heading.value)
     angle: int = min(diff, 360 - diff)
 
-    angle_to_point_of_sail = {
-        0: PointOfSail.LUFFING,
-        45: PointOfSail.BEATING,
-        90: PointOfSail.BEAM_REACHING,
-        135: PointOfSail.BROAD_REACHING,
-        180: PointOfSail.RUNNING,
-    }
-
-    return angle_to_point_of_sail[angle]
+    return _ANGLE_TO_POINT_OF_SAIL[angle]

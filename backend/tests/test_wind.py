@@ -1,7 +1,7 @@
 import pytest
 
 from regatta.models.wind import (
-    BoatHeading,
+    Heading,
     PointOfSail,
     WindDirection,
     get_point_of_sail,
@@ -11,26 +11,26 @@ from regatta.models.wind import (
 @pytest.mark.parametrize(
     "input_a,input_b,expected",
     [
-        (WindDirection.NORTH, BoatHeading.NORTH, PointOfSail.LUFFING),  # 0° - into wind
-        (WindDirection.NORTH, BoatHeading.NORTH_EAST, PointOfSail.BEATING),  # 45°
-        (WindDirection.NORTH, BoatHeading.EAST, PointOfSail.BEAM_REACHING),  # 90°
+        (WindDirection.NORTH, Heading.NORTH, PointOfSail.LUFFING),  # 0° - into wind
+        (WindDirection.NORTH, Heading.NORTH_EAST, PointOfSail.BEATING),  # 45°
+        (WindDirection.NORTH, Heading.EAST, PointOfSail.BEAM_REACHING),  # 90°
         (
             WindDirection.NORTH,
-            BoatHeading.SOUTH_EAST,
+            Heading.SOUTH_EAST,
             PointOfSail.BROAD_REACHING,
         ),  # 135°
         (
             WindDirection.NORTH,
-            BoatHeading.SOUTH,
+            Heading.SOUTH,
             PointOfSail.RUNNING,
         ),  # 180° - wind at back
         (
             WindDirection.NORTH,
-            BoatHeading.NORTH_WEST,
+            Heading.NORTH_WEST,
             PointOfSail.BEATING,
         ),  # 315° → 45° (wraparound)
-        (WindDirection.EAST, BoatHeading.WEST, PointOfSail.RUNNING),  # 180°
-        (WindDirection.SOUTH_WEST, BoatHeading.NORTH_EAST, PointOfSail.RUNNING),  # 180°
+        (WindDirection.EAST, Heading.WEST, PointOfSail.RUNNING),  # 180°
+        (WindDirection.SOUTH_WEST, Heading.NORTH_EAST, PointOfSail.RUNNING),  # 180°
     ],
 )
 def test_get_point_of_sail(input_a, input_b, expected):
