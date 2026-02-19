@@ -8,6 +8,11 @@ from regatta.models.wind import (
 )
 
 
+def test_opposite():
+    assert WindDirection.EAST.opposite() == WindDirection.WEST
+    assert WindDirection.NORTH.opposite() == WindDirection.SOUTH
+
+
 @pytest.mark.parametrize(
     "input_a,input_b,expected",
     [

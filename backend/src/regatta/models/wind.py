@@ -11,6 +11,9 @@ class WindDirection(Enum):
     WEST = 270
     NORTH_WEST = 315
 
+    def opposite(self) -> "WindDirection":
+        return WindDirection((self.value + 180) % 360)
+
 
 Heading = WindDirection
 
