@@ -1,4 +1,4 @@
-.PHONY: test-backend lint-backend format-backend run-backend test-frontend lint-frontend format-frontend
+.PHONY: test-backend lint-backend format-backend run-backend typecheck-backend test-frontend lint-frontend format-frontend 
 
 # Backend
 test-backend:
@@ -15,6 +15,9 @@ format-backend:
 
 run-backend:
 	cd backend && .venv/bin/uvicorn regatta.main:app --reload
+
+typecheck-backend:
+	cd backend && .venv/bin/pyright src
 
 # Frontend
 test-frontend:

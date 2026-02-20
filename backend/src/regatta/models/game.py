@@ -28,7 +28,8 @@ class Game:
     current_player_index: int = 0
 
     # Turn state
-    spaces_remaining: int = 0
+    legs_per_turn: int = 0
+    legs_remaining: int = 0
     has_used_puff: bool = False
 
     # End state
