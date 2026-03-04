@@ -1,10 +1,6 @@
 from pydantic import BaseModel
 
 
-class CreateGameRequest(BaseModel):
-    pass
-
-
 class AddPlayerRequest(BaseModel):
     player_id: str
 
