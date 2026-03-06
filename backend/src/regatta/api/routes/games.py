@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from regatta.ws.connection_manager import connection_manager
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from regatta.api.deps import get_db
@@ -45,6 +46,8 @@ async def _save_game(game_row: GameRow, game: Game, db: AsyncSession) -> GameRes
     game_row.state = serialized_game
 
     await db.commit()
+    await connection_manager.broadcast(str(game_row.id), serialized_game)
+
     return GameResponse.model_validate(serialized_game)
 
 
