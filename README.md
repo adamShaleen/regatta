@@ -41,15 +41,16 @@ npm install
 
 All commands run from project root:
 
-| Command | Description |
-|---------|-------------|
-| `make test-backend` | Run backend tests |
-| `make lint-backend` | Lint backend code |
-| `make format-backend` | Format backend code |
-| `make run-backend` | Start backend server |
-| `make test-frontend` | Run frontend tests |
-| `make lint-frontend` | Lint frontend code |
-| `make format-frontend` | Format frontend code |
+| Command                             | Description                          |
+| ----------------------------------- | ------------------------------------ |
+| `make test-backend`                 | Run backend tests                    |
+| `make lint-backend`                 | Lint backend code                    |
+| `make format-backend`               | Format backend code                  |
+| `make run-backend`                  | Start backend server                 |
+| `make test-frontend`                | Run frontend tests                   |
+| `make lint-frontend`                | Lint frontend code                   |
+| `make format-frontend`              | Format frontend code                 |
+| `uvicorn regatta.main:app --reload` | Run backend (from backend directory) |
 
 ## Game Rules
 

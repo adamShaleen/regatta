@@ -58,6 +58,7 @@ A web-based multiplayer recreation of the 1970 3M board game "Regatta" - a sailb
   - Provide concise snippets with applicable comments
   - Explain why this approach over alternatives (best practices)
   - Call out Pythonic conventions vs other languages
+  - Take appropriate time and token usage to create thorough, functional, and syntactically correct code (no linting errors or warnings)
 
 ### Explanations
 
