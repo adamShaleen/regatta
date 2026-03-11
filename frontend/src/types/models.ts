@@ -8,4 +8,5 @@ export type YachtResponse = components['schemas']['YachtResponse'];
 export interface PhaseProps {
   game: GameResponse;
   setGame: Dispatch<SetStateAction<GameResponse | undefined>>;
+  playerId: string | null;
 }

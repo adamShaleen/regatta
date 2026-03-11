@@ -16,24 +16,26 @@ export const GamePage = () => {
     return `Failed to fetch game with gameId ${gameId}`;
   };
 
-  const renderPhase = () => {
+  const renderPhase = (playerId: string | null) => {
     if (!game) return null;
     if (game.phase === 'LOBBY')
       return (
         <>
           <Board board={game.board} yachts={game.yachts} />
-          <LobbyPhase game={game} setGame={setGame} />
+          <LobbyPhase game={game} setGame={setGame} playerId={playerId} />
         </>
       );
 
     if (game.phase === 'SETUP')
-      return <SetupPhase game={game} setGame={setGame} />;
+      return <SetupPhase game={game} setGame={setGame} playerId={playerId} />;
 
     if (game.phase === 'RACING')
-      return <RacingPhase game={game} setGame={setGame} />;
+      return <RacingPhase game={game} setGame={setGame} playerId={playerId} />;
 
     if (game.phase === 'FINISHED')
-      return <FinishedPhase game={game} setGame={setGame} />;
+      return (
+        <FinishedPhase game={game} setGame={setGame} playerId={playerId} />
+      );
 
     return null;
   };
@@ -62,7 +64,29 @@ export const GamePage = () => {
       });
   }, [gameId]);
 
+  useEffect(() => {
+    if (!gameId) return;
+
+    const webSocketUrl = import.meta.env.VITE_API_URL.replace(
+      /^http:\/\//,
+      'ws://'
+    ).replace(/^https:\/\//, 'wss://');
+
+    const webSocket = new WebSocket(`${webSocketUrl}/games/${gameId}/ws`);
+
+    webSocket.onmessage = (event) => {
+      const data: GameResponse = JSON.parse(event.data);
+      setGame(data);
+    };
+
+    return () => {
+      webSocket.close();
+    };
+  }, [gameId]);
+
   if (!gameId) return null;
+
+  const playerId = localStorage.getItem(`regatta_player_${gameId}`) ?? null;
 
   return (
     <div className="min-h-screen flex flex-col items-center py-8 px-4">
@@ -74,7 +98,7 @@ export const GamePage = () => {
         {loading ? (
           <span className="text-gray-400 tracking-widest">LOADING...</span>
         ) : (
-          renderPhase()
+          renderPhase(playerId)
         )}
       </div>
     </div>

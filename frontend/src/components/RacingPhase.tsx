@@ -44,19 +44,22 @@ const WIND_DIRECTION_LABELS: Record<number, string> = {
   315: 'North West'
 };
 
-export const RacingPhase = ({ game, setGame }: PhaseProps) => {
+export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   const currentPlayer = game.setup_order[game.current_player_index];
   const currentPlayerPosition = game.yachts[currentPlayer];
   const colorIndex = Object.keys(game.yachts).indexOf(currentPlayer);
+  const isMyTurn = playerId === game.setup_order[game.current_player_index];
 
   const [highlightedCell, setHighlightedCell] = useState<{
     x: number;
     y: number;
   } | null>(null);
+
   const [showRules, setShowRules] = useState(false);
   const [puffMode, setPuffMode] = useState(false);
 
   const raiseSpinnaker = async () => {
+    if (!isMyTurn) return false;
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/spinnaker/raise`,
       {
@@ -76,6 +79,8 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
   };
 
   const lowerSpinnaker = async () => {
+    if (!isMyTurn) return false;
+
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/spinnaker/lower`,
       {
@@ -95,6 +100,8 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
   };
 
   const startRound = async () => {
+    if (!isMyTurn) return false;
+
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/round`,
       { method: 'POST' }
@@ -110,6 +117,8 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
   };
 
   const handleCellClick = async (x: number, y: number) => {
+    if (!isMyTurn) return false;
+
     const dx = x - currentPlayerPosition.position.x;
     const dy = y - currentPlayerPosition.position.y;
 
@@ -161,6 +170,8 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
   };
 
   const handleCellHover = (x: number, y: number) => {
+    if (!isMyTurn) return false;
+
     const dx = x - currentPlayerPosition.position.x;
     const dy = y - currentPlayerPosition.position.y;
 
@@ -216,10 +227,14 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
       <div className="flex flex-col gap-3 bg-[#1e2d3d] px-8 py-4 w-full overflow-hidden">
         <div className="flex items-center justify-center gap-8">
           <div className="flex flex-col items-center justify-between min-h-14">
-            <span className="text-xs text-gray-400 uppercase tracking-wider">Wind</span>
+            <span className="text-xs text-gray-400 uppercase tracking-wider">
+              Wind
+            </span>
             <div className="flex items-center gap-2">
               <svg width="20" height="20" viewBox="0 0 40 40">
-                <g transform={`rotate(${(game.wind_direction + 180) % 360}, 20, 20)`}>
+                <g
+                  transform={`rotate(${(game.wind_direction + 180) % 360}, 20, 20)`}
+                >
                   <polygon points="20,5 35,35 20,28 5,35" fill="white" />
                 </g>
               </svg>
@@ -235,7 +250,10 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
             <span className="text-xs text-gray-400 uppercase tracking-wider">
               Current Player
             </span>
-            <span className="font-bold text-lg" style={{ color: YACHT_COLORS[colorIndex] }}>
+            <span
+              className="font-bold text-lg"
+              style={{ color: YACHT_COLORS[colorIndex] }}
+            >
               {game.setup_order[game.current_player_index]}
             </span>
           </div>
@@ -244,15 +262,20 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
 
           <div className="flex flex-col items-center justify-between min-h-14">
             <span className="text-xs text-gray-400 uppercase tracking-wider text-center">
-              {game.setup_order[game.current_player_index]}<br />Legs Remaining
+              {game.setup_order[game.current_player_index]}
+              <br />
+              Legs Remaining
             </span>
-            <span className="text-white font-bold text-lg">{game.legs_remaining}</span>
+            <span className="text-white font-bold text-lg">
+              {game.legs_remaining}
+            </span>
           </div>
 
           {game.legs_remaining === 0 && (
             <>
               <div className="w-px h-10 bg-gray-600" />
               <button
+                disabled={!isMyTurn}
                 onClick={startRound}
                 className="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold px-6 py-2 rounded-lg tracking-wider transition-colors"
               >
@@ -266,6 +289,7 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
               <div className="w-px h-10 bg-gray-600" />
               {game.yachts[currentPlayer].spinnaker ? (
                 <button
+                  disabled={!isMyTurn}
                   onClick={lowerSpinnaker}
                   className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg tracking-wider transition-colors"
                 >
@@ -273,6 +297,7 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
                 </button>
               ) : (
                 <button
+                  disabled={!isMyTurn}
                   onClick={raiseSpinnaker}
                   className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg tracking-wider transition-colors"
                 >
@@ -280,28 +305,32 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
                 </button>
               )}
 
-              {!game.has_used_puff && game.yachts[currentPlayer].puff_count > 0 && (
-                <>
-                  <div className="w-px h-10 bg-gray-600" />
-                  <button
-                    onClick={() => setPuffMode((v) => !v)}
-                    className={`font-bold px-4 py-2 rounded-lg tracking-wider transition-colors ${
-                      puffMode
-                        ? 'bg-yellow-400 text-gray-900'
-                        : 'bg-blue-600 hover:bg-blue-500 text-white'
-                    }`}
-                  >
-                    USE PUFF ({game.yachts[currentPlayer].puff_count})
-                  </button>
-                </>
-              )}
+              {!game.has_used_puff &&
+                game.yachts[currentPlayer].puff_count > 0 && (
+                  <>
+                    <div className="w-px h-10 bg-gray-600" />
+                    <button
+                      disabled={!isMyTurn}
+                      onClick={() => setPuffMode((v) => !v)}
+                      className={`font-bold px-4 py-2 rounded-lg tracking-wider transition-colors ${
+                        puffMode
+                          ? 'bg-yellow-400 text-gray-900'
+                          : 'bg-blue-600 hover:bg-blue-500 text-white'
+                      }`}
+                    >
+                      USE PUFF ({game.yachts[currentPlayer].puff_count})
+                    </button>
+                  </>
+                )}
             </>
           )}
         </div>
 
         <div className="border-t border-gray-700 pt-3 flex items-center justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="text-xs text-gray-400 uppercase tracking-wider mr-2">Legend</span>
+            <span className="text-xs text-gray-400 uppercase tracking-wider mr-2">
+              Legend
+            </span>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-full bg-[#e74c3c] border border-white/50" />
               <span className="text-xs text-gray-300">Course Mark</span>
@@ -341,24 +370,49 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
         {showRules && (
           <div className="border-t border-gray-700 pt-3 grid grid-cols-2 gap-x-8 gap-y-3 text-xs text-gray-300 w-full">
             <div>
-              <p className="text-gray-400 uppercase tracking-wider mb-1">Objective</p>
-              <p>Round all three course marks and cross the finish line first.</p>
+              <p className="text-gray-400 uppercase tracking-wider mb-1">
+                Objective
+              </p>
+              <p>
+                Round all three course marks and cross the finish line first.
+              </p>
             </div>
             <div>
-              <p className="text-gray-400 uppercase tracking-wider mb-1">Movement</p>
-              <p>Each turn consists of 1–3 legs determined by the die roll. Each leg is a straight line move.</p>
+              <p className="text-gray-400 uppercase tracking-wider mb-1">
+                Movement
+              </p>
+              <p>
+                Each turn consists of 1–3 legs determined by the die roll. Each
+                leg is a straight line move.
+              </p>
             </div>
             <div>
-              <p className="text-gray-400 uppercase tracking-wider mb-1">Points of Sail</p>
+              <p className="text-gray-400 uppercase tracking-wider mb-1">
+                Points of Sail
+              </p>
               <ul className="space-y-0.5">
-                <li>Broad Reaching — <span className="text-white font-medium">3 spaces</span></li>
-                <li>Beam Reaching / Running — <span className="text-white font-medium">2 spaces</span></li>
-                <li>Beating — <span className="text-white font-medium">1 space</span></li>
-                <li>Luffing (into wind) — <span className="text-white font-medium">0 spaces</span></li>
+                <li>
+                  Broad Reaching —{' '}
+                  <span className="text-white font-medium">3 spaces</span>
+                </li>
+                <li>
+                  Beam Reaching / Running —{' '}
+                  <span className="text-white font-medium">2 spaces</span>
+                </li>
+                <li>
+                  Beating —{' '}
+                  <span className="text-white font-medium">1 space</span>
+                </li>
+                <li>
+                  Luffing (into wind) —{' '}
+                  <span className="text-white font-medium">0 spaces</span>
+                </li>
               </ul>
             </div>
             <div>
-              <p className="text-gray-400 uppercase tracking-wider mb-1">Basic Rules</p>
+              <p className="text-gray-400 uppercase tracking-wider mb-1">
+                Basic Rules
+              </p>
               <ul className="space-y-0.5">
                 <li>Cannot move onto an occupied space.</li>
                 <li>All legs must be completed each turn.</li>
@@ -367,7 +421,6 @@ export const RacingPhase = ({ game, setGame }: PhaseProps) => {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

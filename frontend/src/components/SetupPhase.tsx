@@ -12,9 +12,10 @@ const WIND_DIRECTION_LABELS: Record<number, string> = {
   315: 'North West'
 };
 
-export const SetupPhase = ({ game, setGame }: PhaseProps) => {
+export const SetupPhase = ({ game, setGame, playerId }: PhaseProps) => {
   const handleCellClick = async (x: number, y: number) => {
-    const playerId = game.setup_order[game.current_player_index];
+    const isMyTurn = playerId === game.setup_order[game.current_player_index];
+    if (!isMyTurn) return;
 
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/starting-position`,
@@ -38,10 +39,14 @@ export const SetupPhase = ({ game, setGame }: PhaseProps) => {
     <div className="flex flex-col items-center gap-4">
       <div className="bg-[#1e2d3d] rounded-lg px-6 py-3 flex items-center gap-6">
         <div className="flex flex-col items-center gap-1">
-          <span className="text-xs text-gray-400 uppercase tracking-wider">Wind</span>
+          <span className="text-xs text-gray-400 uppercase tracking-wider">
+            Wind
+          </span>
           <div className="flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 40 40">
-              <g transform={`rotate(${(game.wind_direction + 180) % 360}, 20, 20)`}>
+              <g
+                transform={`rotate(${(game.wind_direction + 180) % 360}, 20, 20)`}
+              >
                 <polygon points="20,5 35,35 20,28 5,35" fill="white" />
               </g>
             </svg>

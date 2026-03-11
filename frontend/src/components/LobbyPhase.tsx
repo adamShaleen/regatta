@@ -26,6 +26,7 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
 
       setGame(await response.json());
       setPlayerId('');
+      localStorage.setItem(`regatta_player_${game.id}`, playerId);
     } catch (error) {
       console.error(errMsg(game.id, 'add player'));
       throw error;
@@ -59,7 +60,9 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
         <input
           disabled={maxPlayersReached}
           className="flex-1 bg-[#0f1923] text-white border border-gray-600 rounded-lg px-4 py-2 placeholder-gray-500 focus:outline-none focus:border-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed"
-          placeholder={maxPlayersReached ? 'Max players reached' : 'Enter player name'}
+          placeholder={
+            maxPlayersReached ? 'Max players reached' : 'Enter player name'
+          }
           value={playerId}
           onChange={(e) => setPlayerId(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
