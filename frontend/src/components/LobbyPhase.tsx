@@ -27,7 +27,7 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
 
       setGame(await response.json());
       setPlayerId('');
-      localStorage.setItem(`regatta_player_${game.id}`, playerId);
+      sessionStorage.setItem(`regatta_player_${game.id}`, playerId);
     } catch (error) {
       console.error(errMsg(game.id, 'add player'));
       throw error;

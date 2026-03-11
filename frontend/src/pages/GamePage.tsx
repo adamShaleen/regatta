@@ -93,7 +93,7 @@ export const GamePage = () => {
 
   if (!gameId) return null;
 
-  const playerId = localStorage.getItem(`regatta_player_${gameId}`) ?? null;
+  const playerId = sessionStorage.getItem(`regatta_player_${gameId}`) ?? null;
 
   return (
     <div className="min-h-screen flex flex-col items-center py-8 px-4">
