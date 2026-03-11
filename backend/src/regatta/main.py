@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from regatta.api.auth import router as auth_router
 from regatta.api.routes.games import router
 from regatta.api.routes.ws import router as ws_router
 
@@ -25,6 +26,7 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(ws_router, prefix="/games")
+app.include_router(auth_router)
 
 
 @app.get("/health")

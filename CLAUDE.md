@@ -149,8 +149,7 @@ Developer will explicitly request help. Claude should:
 
 ### Phase 5: Polish
 
-- Authentication
-- Game history
+- Authentication ✓
 - Advanced rules
 - Visual improvements
 

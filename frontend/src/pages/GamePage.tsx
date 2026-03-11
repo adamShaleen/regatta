@@ -6,6 +6,7 @@ import { Board } from '../components/Board';
 import { SetupPhase } from '../components/SetupPhase';
 import { RacingPhase } from '../components/RacingPhase';
 import { FinishedPhase } from '../components/FinishedPhase';
+import { authFetch } from '../utils/api';
 
 export const GamePage = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -45,7 +46,9 @@ export const GamePage = () => {
 
     setLoading(true);
 
-    fetch(`${import.meta.env.VITE_API_URL}/games/${gameId}`, { method: 'GET' })
+    authFetch(`${import.meta.env.VITE_API_URL}/games/${gameId}`, {
+      method: 'GET'
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error(errMsg(gameId));
@@ -72,7 +75,11 @@ export const GamePage = () => {
       'ws://'
     ).replace(/^https:\/\//, 'wss://');
 
-    const webSocket = new WebSocket(`${webSocketUrl}/games/${gameId}/ws`);
+    const token = localStorage.getItem('regatta_token');
+
+    const webSocket = new WebSocket(
+      `${webSocketUrl}/games/${gameId}/ws?token=${token}`
+    );
 
     webSocket.onmessage = (event) => {
       const data: GameResponse = JSON.parse(event.data);

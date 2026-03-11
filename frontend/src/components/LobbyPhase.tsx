@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { PhaseProps } from '../types/models';
+import { authFetch } from '../utils/api';
 
 export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
   const [playerId, setPlayerId] = useState('');
@@ -10,7 +11,7 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
 
   const handleAddPlayer = async (): Promise<void> => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_API_URL}/games/${game.id}/players`,
         {
           method: 'POST',
@@ -35,7 +36,7 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
 
   const handleStartSetup = async (): Promise<void> => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_API_URL}/games/${game.id}/start`,
         { method: 'POST' }
       );

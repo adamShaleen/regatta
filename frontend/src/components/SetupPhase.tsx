@@ -1,4 +1,5 @@
 import { PhaseProps } from '../types/models';
+import { authFetch } from '../utils/api';
 import { InteractiveBoard } from './InteractiveBoard';
 
 const WIND_DIRECTION_LABELS: Record<number, string> = {
@@ -17,7 +18,7 @@ export const SetupPhase = ({ game, setGame, playerId }: PhaseProps) => {
     const isMyTurn = playerId === game.setup_order[game.current_player_index];
     if (!isMyTurn) return;
 
-    const response = await fetch(
+    const response = await authFetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/starting-position`,
       {
         method: 'POST',

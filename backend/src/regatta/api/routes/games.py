@@ -4,7 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from regatta.api.deps import get_db
+from regatta.api.deps import get_current_user, get_db
 from regatta.api.schemas import (
     AddPlayerRequest,
     ChooseStartingPositionRequest,
@@ -32,7 +32,9 @@ from regatta.models.wind import Heading, WindDirection
 from regatta.serialization.game_serializer import deserialize_game, serialize_game
 from regatta.ws.connection_manager import connection_manager
 
-router = APIRouter(prefix="/games", tags=["games"])
+router = APIRouter(
+    prefix="/games", tags=["games"], dependencies=[Depends(get_current_user)]
+)
 
 
 async def _get_game_or_404(game_id: uuid.UUID, db: AsyncSession) -> GameRow:

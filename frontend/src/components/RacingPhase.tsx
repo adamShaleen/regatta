@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PhaseProps } from '../types/models';
 import { CELL_SIZE, YACHT_COLORS } from './Board';
 import { InteractiveBoard } from './InteractiveBoard';
+import { authFetch } from '../utils/api';
 
 const HEADING_MAP: Record<string, number> = {
   '0,-1': 0, // NORTH
@@ -60,7 +61,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
 
   const raiseSpinnaker = async () => {
     if (!isMyTurn) return false;
-    const response = await fetch(
+    const response = await authFetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/spinnaker/raise`,
       {
         method: 'POST',
@@ -81,7 +82,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   const lowerSpinnaker = async () => {
     if (!isMyTurn) return false;
 
-    const response = await fetch(
+    const response = await authFetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/spinnaker/lower`,
       {
         method: 'POST',
@@ -102,7 +103,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   const startRound = async () => {
     if (!isMyTurn) return false;
 
-    const response = await fetch(
+    const response = await authFetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/round`,
       { method: 'POST' }
     );
@@ -126,7 +127,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
     if (heading === undefined) return;
 
     if (puffMode) {
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_API_URL}/games/${game.id}/puff`,
         {
           method: 'POST',
@@ -147,7 +148,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
       return;
     }
 
-    const response = await fetch(
+    const response = await authFetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/move`,
       {
         method: 'POST',

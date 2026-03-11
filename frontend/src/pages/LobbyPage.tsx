@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { authFetch } from '../utils/api';
 
 export const LobbyPage = () => {
   const navigate = useNavigate();
@@ -7,9 +8,12 @@ export const LobbyPage = () => {
 
   const handleCreateGame = async (): Promise<void> => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/games/`, {
-        method: 'POST'
-      });
+      const response = await authFetch(
+        `${import.meta.env.VITE_API_URL}/games/`,
+        {
+          method: 'POST'
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to create game: ${response.status}`);
