@@ -1,6 +1,7 @@
 import random
 from dataclasses import replace
 
+from regatta.core.geometry import bounding_box_contains, convex_hull, is_strictly_inside_hull
 from regatta.models.game import Game, GamePhase
 from regatta.models.position import Position, calculate_next_position
 from regatta.models.wind import Heading, PointOfSail, get_point_of_sail
@@ -48,7 +49,7 @@ def choose_starting_position(game: Game, player_id: str, position: Position) -> 
     if any(yacht.position == position for yacht in game.yachts.values()):
         raise ValueError("Position is already taken")
 
-    new_yacht = Yacht(position, heading=game.wind_direction.opposite())
+    new_yacht = Yacht(position, heading=game.wind_direction.opposite(), position_history=(position,))
     updated_yachts = {**game.yachts, player_id: new_yacht}
 
     new_index = game.current_player_index + 1
@@ -82,6 +83,9 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
     point_of_sail = get_point_of_sail(game.wind_direction, heading)
     spaces = point_of_sail.speed
 
+    if spaces == 0:
+        raise ValueError("Cannot sail directly into the wind")
+
     # spinnaker bonus
     if game.yachts[player_id].spinnaker and point_of_sail in (
         PointOfSail.RUNNING,
@@ -89,9 +93,28 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
     ):
         spaces += 1
 
+    current_marks_rounded = game.yachts[player_id].marks_rounded
+    current_history = game.yachts[player_id].position_history
+
     next_position = game.yachts[player_id].position
     for _ in range(spaces):
-        next_position = calculate_next_position(next_position, heading)
+        candidate = calculate_next_position(next_position, heading)
+        if game.board.is_on_course_mark(candidate):
+            raise ValueError("Cannot sail through a course mark")
+        next_position = candidate
+        current_history = current_history + (next_position,)
+
+        if len(current_history) >= 8:
+            history_list = list(current_history)
+            for mark in game.board.course_marks:
+                if mark not in current_marks_rounded and bounding_box_contains(history_list, mark):
+                    hull = convex_hull(history_list)
+                    if is_strictly_inside_hull(hull, mark):
+                        current_marks_rounded = current_marks_rounded | {mark}
+
+        all_marks_rounded = set(game.board.course_marks) <= set(current_marks_rounded)
+        if all_marks_rounded and game.board.is_on_starting_line(next_position):
+            break
 
     if not game.board.is_in_bounds(next_position):
         raise ValueError("Position is out of bounds")
@@ -99,17 +122,17 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
     if any(yacht.position == next_position for yacht in game.yachts.values()):
         raise ValueError("Position is occupied")
 
-    updated_yacht = game.yachts[player_id].with_position(next_position)
-
-    # Check if landed on a course mark
-    if game.board.is_on_course_mark(next_position):
-        new_marks = updated_yacht.marks_rounded | {next_position}
-        updated_yacht = updated_yacht.with_marks_rounded(new_marks)
+    updated_yacht = (
+        game.yachts[player_id]
+        .with_position(next_position)
+        .with_marks_rounded(current_marks_rounded)
+        .with_position_history(current_history)
+    )
 
     updated_yachts = {**game.yachts, player_id: updated_yacht}
 
     # Check win condition
-    all_marks_rounded = set(game.board.course_marks) <= set(updated_yacht.marks_rounded)
+    all_marks_rounded = set(game.board.course_marks) <= set(current_marks_rounded)
     on_finish_line = game.board.is_on_starting_line(next_position)
 
     if all_marks_rounded and on_finish_line:
@@ -121,7 +144,14 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
             phase=GamePhase.FINISHED,
         )
 
-    return replace(game, yachts=updated_yachts, legs_remaining=game.legs_remaining - 1)
+    updated_game = replace(
+        game, yachts=updated_yachts, legs_remaining=game.legs_remaining - 1
+    )
+
+    if updated_game.legs_remaining == 0:
+        return end_turn(updated_game)
+
+    return updated_game
 
 
 def end_turn(game: Game) -> Game:
@@ -164,6 +194,9 @@ def use_puff(game: Game, player_id: str, direction: Heading) -> Game:
 
     new_position = calculate_next_position(player_yacht.position, direction)
 
+    if game.board.is_on_course_mark(new_position):
+        raise ValueError("Cannot puff onto a course mark")
+
     if not game.board.is_in_bounds(new_position):
         raise ValueError("New Position is out of bounds")
 
@@ -172,8 +205,23 @@ def use_puff(game: Game, player_id: str, direction: Heading) -> Game:
 
     new_puff_count = player_yacht.puff_count - 1
 
-    updated_yacht = player_yacht.with_puff_count(new_puff_count).with_position(
-        new_position
+    current_marks_rounded = player_yacht.marks_rounded
+    current_history = player_yacht.position_history + (new_position,)
+
+    if len(current_history) >= 8:
+        history_list = list(current_history)
+        for mark in game.board.course_marks:
+            if mark not in current_marks_rounded and bounding_box_contains(history_list, mark):
+                hull = convex_hull(history_list)
+                if is_strictly_inside_hull(hull, mark):
+                    current_marks_rounded = current_marks_rounded | {mark}
+
+    updated_yacht = (
+        player_yacht
+        .with_puff_count(new_puff_count)
+        .with_position(new_position)
+        .with_marks_rounded(current_marks_rounded)
+        .with_position_history(current_history)
     )
     updated_yachts = {**game.yachts, player_id: updated_yacht}
 
@@ -212,6 +260,11 @@ def lower_spinnaker(game: Game, player_id: str) -> Game:
     updated_yacht = game.yachts[player_id].with_spinnaker(False)
     updated_yachts = {**game.yachts, player_id: updated_yacht}
 
-    updated_legs_remaining = game.legs_remaining - 1
+    updated_game = replace(
+        game, yachts=updated_yachts, legs_remaining=game.legs_remaining - 1
+    )
 
-    return replace(game, yachts=updated_yachts, legs_remaining=updated_legs_remaining)
+    if updated_game.legs_remaining == 0:
+        return end_turn(updated_game)
+
+    return updated_game

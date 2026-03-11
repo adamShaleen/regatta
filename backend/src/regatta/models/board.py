@@ -52,3 +52,4 @@ class Board:
 
     def is_on_starting_line(self, position: Position) -> bool:
         return position in self.get_starting_line_positions()
+

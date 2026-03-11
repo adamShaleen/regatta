@@ -5,6 +5,7 @@ import { LobbyPhase } from '../components/LobbyPhase';
 import { Board } from '../components/Board';
 import { SetupPhase } from '../components/SetupPhase';
 import { RacingPhase } from '../components/RacingPhase';
+import { FinishedPhase } from '../components/FinishedPhase';
 
 export const GamePage = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -30,6 +31,9 @@ export const GamePage = () => {
 
     if (game.phase === 'RACING')
       return <RacingPhase game={game} setGame={setGame} />;
+
+    if (game.phase === 'FINISHED')
+      return <FinishedPhase game={game} setGame={setGame} />;
 
     return null;
   };
@@ -61,12 +65,18 @@ export const GamePage = () => {
   if (!gameId) return null;
 
   return (
-    <div>
-      <h3>GAME PAGE</h3>
+    <div className="min-h-screen flex flex-col items-center py-8 px-4">
+      <div className="flex flex-col items-center w-fit min-w-80">
+        <h1 className="text-center text-3xl font-bold tracking-[1em] text-white mb-6">
+          REGATTA
+        </h1>
 
-      <section>
-        {loading ? <span>...LOADING</span> : <>{renderPhase()}</>}
-      </section>
+        {loading ? (
+          <span className="text-gray-400 tracking-widest">LOADING...</span>
+        ) : (
+          renderPhase()
+        )}
+      </div>
     </div>
   );
 };

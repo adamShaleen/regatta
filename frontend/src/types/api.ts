@@ -324,6 +324,8 @@ export interface components {
             puff_count: number;
             /** Marks Rounded */
             marks_rounded: components["schemas"]["PositionResponse"][];
+            /** Position History */
+            position_history: components["schemas"]["PositionResponse"][];
         };
     };
     responses: never;

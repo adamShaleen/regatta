@@ -11,6 +11,7 @@ class Yacht:
     spinnaker: bool = False
     puff_count: int = 2
     marks_rounded: frozenset[Position] = field(default_factory=frozenset)
+    position_history: tuple[Position, ...] = field(default_factory=tuple)
 
     def with_position(self, new_position: Position) -> "Yacht":
         return Yacht(
@@ -19,6 +20,7 @@ class Yacht:
             self.spinnaker,
             self.puff_count,
             self.marks_rounded,
+            self.position_history,
         )
 
     def with_heading(self, new_heading: Heading) -> "Yacht":
@@ -28,6 +30,7 @@ class Yacht:
             self.spinnaker,
             self.puff_count,
             self.marks_rounded,
+            self.position_history,
         )
 
     def with_spinnaker(self, new_spinnaker_position: bool) -> "Yacht":
@@ -37,6 +40,7 @@ class Yacht:
             new_spinnaker_position,
             self.puff_count,
             self.marks_rounded,
+            self.position_history,
         )
 
     def with_puff_count(self, new_puff_count: int) -> "Yacht":
@@ -46,6 +50,7 @@ class Yacht:
             self.spinnaker,
             new_puff_count,
             self.marks_rounded,
+            self.position_history,
         )
 
     def with_marks_rounded(self, new_marks: frozenset[Position]) -> "Yacht":
@@ -55,4 +60,17 @@ class Yacht:
             self.spinnaker,
             self.puff_count,
             marks_rounded=new_marks,
+            position_history=self.position_history,
+        )
+
+    def with_position_history(
+        self, new_history: tuple[Position, ...]
+    ) -> "Yacht":
+        return Yacht(
+            self.position,
+            self.heading,
+            self.spinnaker,
+            self.puff_count,
+            marks_rounded=self.marks_rounded,
+            position_history=new_history,
         )

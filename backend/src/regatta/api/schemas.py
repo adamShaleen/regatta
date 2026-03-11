@@ -36,6 +36,7 @@ class YachtResponse(BaseModel):
     spinnaker: bool
     puff_count: int
     marks_rounded: list[PositionResponse]
+    position_history: list[PositionResponse]
 
 
 class GridResponse(BaseModel):

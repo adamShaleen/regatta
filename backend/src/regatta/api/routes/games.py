@@ -1,3 +1,4 @@
+import random
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -55,11 +56,17 @@ async def _save_game(game_row: GameRow, game: Game, db: AsyncSession) -> GameRes
 async def create_game(db: AsyncSession = Depends(get_db)):
     board = Board(
         grid=Grid(28, 20),
-        course_marks=[Position(14, 2), Position(5, 12), Position(23, 12)],
+        course_marks=[
+            Position(random.randint(10, 18), random.randint(1, 4)),
+        ],
         starting_line=(Position(8, 19), Position(20, 19)),
     )
 
-    game = Game(id=str(uuid.uuid4()), board=board, wind_direction=WindDirection.NORTH)
+    game = Game(
+        id=str(uuid.uuid4()),
+        board=board,
+        wind_direction=random.choice(list(WindDirection)),
+    )
     serialized_game = serialize_game(game)
     game_row = GameRow(id=uuid.UUID(game.id), state=serialized_game)
 

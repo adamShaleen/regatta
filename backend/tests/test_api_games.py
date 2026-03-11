@@ -9,12 +9,14 @@ async def exhaust_legs(
         json={"player_id": player_id, "heading": heading},
     )
     assert response.status_code == 200, response.json()
-    while response.json()["legs_remaining"] > 0:
+    data = response.json()
+    while data["setup_order"][data["current_player_index"]] == player_id:
         response = await client.post(
             f"/games/{game_id}/move",
             json={"player_id": player_id, "heading": heading},
         )
         assert response.status_code == 200, response.json()
+        data = response.json()
 
 
 async def test_create_game(client: AsyncClient):
@@ -77,12 +79,7 @@ async def test_full_game_happy_path(client: AsyncClient):
     assert start_round.status_code == 200
 
     await exhaust_legs(client, game_id, ordered_players[0], 45)
-    end_turn_1: Response = await client.post(f"/games/{game_id}/end-turn")
-    assert end_turn_1.status_code == 200
-
     await exhaust_legs(client, game_id, ordered_players[1], 45)
-    end_turn_2: Response = await client.post(f"/games/{game_id}/end-turn")
-    assert end_turn_2.status_code == 200
 
     puff_1: Response = await client.post(
         f"/games/{game_id}/puff",

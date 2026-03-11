@@ -22,9 +22,9 @@ def make_game(**overrides) -> Game:
     defaults = {
         "id": "mock_game_id",
         "board": Board(
-            Grid(5, 5),
-            course_marks=[Position(1, 1), Position(2, 2), Position(3, 3)],
-            starting_line=(Position(0, 0), Position(1, 1)),
+            Grid(10, 6),
+            course_marks=[Position(5, 2)],
+            starting_line=(Position(3, 5), Position(7, 5)),
         ),
         "wind_direction": WindDirection.EAST,
     }
@@ -107,11 +107,11 @@ def test_start_setup_happy():
             make_game(
                 phase=GamePhase.SETUP,
                 setup_order=["player_1", "player_2"],
-                yachts={"player_2": Yacht(Position(0, 0), heading=WindDirection.WEST)},
+                yachts={"player_2": Yacht(Position(4, 5), heading=WindDirection.WEST)},
                 current_player_index=0,
             ),
             "player_1",
-            Position(0, 0),
+            Position(4, 5),
             "Position is already taken",
         ),
     ],
@@ -236,57 +236,108 @@ def test_move_leg_happy():
 
 
 def test_move_leg_rounds_mark():
-    game = make_game(
-        phase=GamePhase.RACING,
-        setup_order=["player_1"],
-        legs_remaining=1,
-        yachts={"player_1": Yacht(Position(2, 0), Heading.EAST)},
-    )
-
-    after_move = move_leg(game, "player_1", Heading.SOUTH)
-
-    assert after_move.yachts["player_1"].position == Position(2, 2)
-    assert Position(2, 2) in after_move.yachts["player_1"].marks_rounded
-
-
-def test_move_leg_win():
+    # Mark at (5,2). Pre-load 7 history positions whose convex hull encloses the mark.
+    # The 8th position (added on the first step of the move) triggers the hull check → rounded.
+    enclosing_history = (
+        Position(3, 0), Position(7, 0), Position(7, 4),
+        Position(5, 4), Position(3, 4), Position(3, 2), Position(5, 0),
+    )  # 7 positions; convex hull is (3,0)-(7,0)-(7,4)-(3,4), which contains (5,2)
     game = make_game(
         phase=GamePhase.RACING,
         setup_order=["player_1"],
         legs_remaining=1,
         yachts={
             "player_1": Yacht(
-                Position(1, 3),
+                Position(5, 4),
                 Heading.EAST,
-                marks_rounded=frozenset({Position(2, 2), Position(3, 3)}),
+                position_history=enclosing_history,
             )
         },
     )
 
-    # Moving NORTH with EAST wind = BEAM_REACHING = 2 spaces
-    # (1, 3) → (1, 1) which is a course mark AND on finish line
-    after_move = move_leg(game, "player_1", Heading.NORTH)
+    # EAST wind + NW = broad reach = 3 spaces: (5,4)→(4,3)→(3,2)→(2,1)
+    # After first step (history len=8), hull check triggers → mark rounded
+    after_move = move_leg(game, "player_1", Heading.NORTH_WEST)
 
-    assert Position(1, 1) in after_move.yachts["player_1"].marks_rounded
+    assert Position(5, 2) in after_move.yachts["player_1"].marks_rounded
+
+
+def test_move_leg_does_not_round_mark_without_enclosure():
+    # Fresh yacht with no history — history will be far too short to trigger the hull check
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=1,
+        yachts={"player_1": Yacht(Position(3, 1), Heading.EAST)},
+    )
+
+    # EAST wind + SOUTH = beam reach = 2 spaces: (3,1)→(3,2)→(3,3)
+    after_move = move_leg(game, "player_1", Heading.SOUTH)
+
+    assert Position(5, 2) not in after_move.yachts["player_1"].marks_rounded
+
+
+def test_move_leg_blocked_by_mark():
+    # EAST wind + SOUTH heading = beam reach (2 spaces)
+    # (5,0) → (5,1) → (5,2), but (5,2) is a mark — should raise
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=1,
+        yachts={"player_1": Yacht(Position(5, 0), Heading.EAST)},
+    )
+
+    with pytest.raises(ValueError, match="Cannot sail through a course mark"):
+        move_leg(game, "player_1", Heading.SOUTH)
+
+
+def test_move_leg_win():
+    # mark at (5,2), starting line at y=5
+    # Yacht at (7,1) with marks_passed_north={Position(5,2)} and spinnaker
+    # EAST wind + SOUTH_WEST = broad reach + spinnaker = 4 spaces
+    # (7,1)→(6,2)→(5,3)→(4,4)→(3,5)
+    # y=2: not > mark.y=2, no phase 2
+    # y=3: > mark.y=2, mark rounded!
+    # y=5: on starting line + all marks rounded → win
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=1,
+        yachts={
+            "player_1": Yacht(
+                Position(7, 1),
+                Heading.EAST,
+                spinnaker=True,
+                marks_rounded=frozenset({Position(5, 2)}),
+            )
+        },
+    )
+
+    after_move = move_leg(game, "player_1", Heading.SOUTH_WEST)
+
+    assert after_move.yachts["player_1"].position == Position(3, 5)
+    assert Position(5, 2) in after_move.yachts["player_1"].marks_rounded
     assert after_move.winner == "player_1"
     assert after_move.phase == GamePhase.FINISHED
 
 
 def test_move_leg_no_win_without_all_marks():
+    # Same path as win test but mark not in marks_passed_north → never rounds → no win
     game = make_game(
         phase=GamePhase.RACING,
         setup_order=["player_1"],
         legs_remaining=1,
         yachts={
             "player_1": Yacht(
-                Position(1, 3),
+                Position(7, 1),
                 Heading.EAST,
-                marks_rounded=frozenset({Position(2, 2)}),  # missing (3,3)
+                spinnaker=True,
+                # no marks_passed_north → mark won't be rounded
             )
         },
     )
 
-    after_move = move_leg(game, "player_1", Heading.NORTH)
+    after_move = move_leg(game, "player_1", Heading.SOUTH_WEST)
 
     assert after_move.winner is None
     assert after_move.phase == GamePhase.RACING
@@ -294,17 +345,17 @@ def test_move_leg_no_win_without_all_marks():
 
 def test_move_leg_spinnaker_bonus():
     # Wind EAST, moving WEST = RUNNING (2 spaces) + spinnaker (+1) = 3 spaces
+    # Start at (3,0): (3,0) → (2,0) → (1,0) → (0,0)
     game = make_game(
         phase=GamePhase.RACING,
         setup_order=["player_1"],
         legs_remaining=1,
-        yachts={"player_1": Yacht(Position(3, 2), Heading.EAST, spinnaker=True)},
+        yachts={"player_1": Yacht(Position(3, 0), Heading.EAST, spinnaker=True)},
     )
 
     after_move = move_leg(game, "player_1", Heading.WEST)
 
-    # 3 spaces WEST: (3,2) → (0,2)
-    assert after_move.yachts["player_1"].position == Position(0, 2)
+    assert after_move.yachts["player_1"].position == Position(0, 0)
 
 
 @pytest.mark.parametrize(
@@ -530,11 +581,11 @@ def test_lower_spinnaker_happy():
     game = make_game(
         phase=GamePhase.RACING,
         setup_order=["player_1"],
-        legs_remaining=1,
+        legs_remaining=2,
         yachts={"player_1": Yacht(Position(1, 1), Heading.EAST, spinnaker=True)},
     )
 
     after_lowered = lower_spinnaker(game, "player_1")
 
     assert not after_lowered.yachts["player_1"].spinnaker
-    assert after_lowered.legs_remaining == 0  # was 1, now 0
+    assert after_lowered.legs_remaining == 1  # was 2, cost 1 leg

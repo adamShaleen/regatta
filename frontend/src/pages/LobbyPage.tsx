@@ -18,10 +18,7 @@ export const LobbyPage = () => {
       const { id } = await response.json();
       navigate(`/game/${id}`);
     } catch (error) {
-      console.error('There was an error calling handleCreateGame', {
-        error
-      });
-
+      console.error('There was an error calling handleCreateGame', { error });
       throw error;
     }
   };
@@ -31,18 +28,41 @@ export const LobbyPage = () => {
   };
 
   return (
-    <div>
-      <section>
-        <button onClick={handleCreateGame}>CREATE GAME</button>
-      </section>
+    <div className="min-h-screen flex flex-col items-center py-8 px-4">
+      <div className="flex flex-col items-center w-full max-w-sm">
+        <h1 className="w-full text-center text-3xl font-bold tracking-[1em] text-white mb-6">
+          REGATTA
+        </h1>
 
-      <section>
-        <input
-          placeholder="INSERT GAME ID"
-          onChange={(e) => setGameId(e.target.value)}
-        />
-        <button onClick={handleJoinGame}>JOIN GAME</button>
-      </section>
+        <div className="flex flex-col gap-4 w-full">
+          <button
+            onClick={handleCreateGame}
+            className="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold py-3 tracking-wider transition-colors"
+          >
+            CREATE GAME
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-600" />
+            <span className="text-gray-500 text-sm tracking-wider">or</span>
+            <div className="flex-1 h-px bg-gray-600" />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <input
+              className="bg-[#1e2d3d] text-white border border-gray-600 px-4 py-2 placeholder-gray-500 focus:outline-none focus:border-yellow-400"
+              placeholder="Enter game ID"
+              onChange={(e) => setGameId(e.target.value)}
+            />
+            <button
+              onClick={handleJoinGame}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 tracking-wider transition-colors"
+            >
+              JOIN GAME
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

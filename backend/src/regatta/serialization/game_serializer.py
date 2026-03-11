@@ -25,6 +25,7 @@ def _serialize_yacht(yacht: Yacht) -> dict:
         "spinnaker": yacht.spinnaker,
         "puff_count": yacht.puff_count,
         "marks_rounded": marks_rounded,
+        "position_history": [_serialize_position(p) for p in yacht.position_history],
     }
 
 
@@ -36,6 +37,9 @@ def _deserialize_yacht(d: dict) -> Yacht:
         puff_count=d["puff_count"],
         marks_rounded=frozenset(
             [_deserialize_position(position) for position in d["marks_rounded"]]
+        ),
+        position_history=tuple(
+            _deserialize_position(p) for p in d.get("position_history", [])
         ),
     )
 
