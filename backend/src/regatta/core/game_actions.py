@@ -1,10 +1,20 @@
 import random
 from dataclasses import replace
 
-from regatta.core.geometry import bounding_box_contains, convex_hull, is_strictly_inside_hull
+from regatta.core.geometry import (
+    bounding_box_contains,
+    convex_hull,
+    is_strictly_inside_hull,
+)
 from regatta.models.game import Game, GamePhase
 from regatta.models.position import Position, calculate_next_position
-from regatta.models.wind import Heading, PointOfSail, get_point_of_sail
+from regatta.models.wind import (
+    Heading,
+    PointOfSail,
+    detect_maneuver,
+    get_point_of_sail,
+    get_tack,
+)
 from regatta.models.yacht import Yacht
 
 
@@ -49,7 +59,9 @@ def choose_starting_position(game: Game, player_id: str, position: Position) -> 
     if any(yacht.position == position for yacht in game.yachts.values()):
         raise ValueError("Position is already taken")
 
-    new_yacht = Yacht(position, heading=game.wind_direction.opposite(), position_history=(position,))
+    new_yacht = Yacht(
+        position, heading=game.wind_direction.opposite(), position_history=(position,)
+    )
     updated_yachts = {**game.yachts, player_id: new_yacht}
 
     new_index = game.current_player_index + 1
@@ -67,7 +79,19 @@ def start_round(game: Game) -> Game:
         raise ValueError("Must be in RACING phase")
 
     roll = random.randint(1, 3)
-    return replace(game, legs_per_turn=roll, legs_remaining=roll, has_used_puff=False)
+    game = replace(game, legs_per_turn=roll, legs_remaining=roll, has_used_puff=False)
+    player_id = game.setup_order[game.current_player_index]
+    penalty = _get_blanket_penalty(game, player_id)
+
+    if penalty == 0:
+        return game
+
+    game = replace(game, legs_remaining=max(0, game.legs_remaining - penalty))
+
+    if game.legs_remaining == 0:
+        return end_turn(game)
+
+    return game
 
 
 def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
@@ -79,6 +103,10 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
 
     if game.legs_remaining == 0:
         raise ValueError("Player has no legs remaining")
+
+    maneuver = detect_maneuver(
+        game.wind_direction, game.yachts[player_id].heading, heading
+    )
 
     point_of_sail = get_point_of_sail(game.wind_direction, heading)
     spaces = point_of_sail.speed
@@ -107,7 +135,9 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
         if len(current_history) >= 8:
             history_list = list(current_history)
             for mark in game.board.course_marks:
-                if mark not in current_marks_rounded and bounding_box_contains(history_list, mark):
+                if mark not in current_marks_rounded and bounding_box_contains(
+                    history_list, mark
+                ):
                     hull = convex_hull(history_list)
                     if is_strictly_inside_hull(hull, mark):
                         current_marks_rounded = current_marks_rounded | {mark}
@@ -115,6 +145,8 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
         all_marks_rounded = set(game.board.course_marks) <= set(current_marks_rounded)
         if all_marks_rounded and game.board.is_on_starting_line(next_position):
             break
+
+    _check_right_of_way(game, player_id, heading, next_position)
 
     if not game.board.is_in_bounds(next_position):
         raise ValueError("Position is out of bounds")
@@ -125,6 +157,7 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
     updated_yacht = (
         game.yachts[player_id]
         .with_position(next_position)
+        .with_heading(heading)
         .with_marks_rounded(current_marks_rounded)
         .with_position_history(current_history)
     )
@@ -144,8 +177,12 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
             phase=GamePhase.FINISHED,
         )
 
+    legs_cost = 2 if maneuver else 1
+
     updated_game = replace(
-        game, yachts=updated_yachts, legs_remaining=game.legs_remaining - 1
+        game,
+        yachts=updated_yachts,
+        legs_remaining=max(0, game.legs_remaining - legs_cost),
     )
 
     if updated_game.legs_remaining == 0:
@@ -211,14 +248,15 @@ def use_puff(game: Game, player_id: str, direction: Heading) -> Game:
     if len(current_history) >= 8:
         history_list = list(current_history)
         for mark in game.board.course_marks:
-            if mark not in current_marks_rounded and bounding_box_contains(history_list, mark):
+            if mark not in current_marks_rounded and bounding_box_contains(
+                history_list, mark
+            ):
                 hull = convex_hull(history_list)
                 if is_strictly_inside_hull(hull, mark):
                     current_marks_rounded = current_marks_rounded | {mark}
 
     updated_yacht = (
-        player_yacht
-        .with_puff_count(new_puff_count)
+        player_yacht.with_puff_count(new_puff_count)
         .with_position(new_position)
         .with_marks_rounded(current_marks_rounded)
         .with_position_history(current_history)
@@ -268,3 +306,41 @@ def lower_spinnaker(game: Game, player_id: str) -> Game:
         return end_turn(updated_game)
 
     return updated_game
+
+
+def _get_blanket_penalty(game: Game, player_id: str) -> int:
+    yacht = game.yachts[player_id]
+    windward_1 = calculate_next_position(yacht.position, game.wind_direction)
+    windward_2 = calculate_next_position(windward_1, game.wind_direction)
+
+    for other_player, other_yacht in game.yachts.items():
+        if other_player == player_id:
+            continue
+        if other_yacht.position == windward_1:
+            return game.legs_remaining
+        if other_yacht.spinnaker and other_yacht.position == windward_2:
+            return 1
+    return 0
+
+
+def _check_right_of_way(
+    game: Game, player_id: str, heading: Heading, destination: Position
+) -> None:
+    """Raises ValueError if destination violates the opposite tack rule."""
+    if get_tack(game.wind_direction, heading) != "port":
+        return
+
+    for other_id, other_yacht in game.yachts.items():
+        if other_id == player_id:
+            continue
+
+        if get_tack(game.wind_direction, other_yacht.heading) != "starboard":
+            continue
+        starboard_next = calculate_next_position(
+            other_yacht.position, other_yacht.heading
+        )
+
+        if destination == starboard_next:
+            raise ValueError(
+                "Right-of-way violation: port-tack yacht must keep clear of starboard-tack yacht"
+            )

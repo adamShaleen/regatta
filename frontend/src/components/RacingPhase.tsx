@@ -51,6 +51,16 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   const colorIndex = Object.keys(game.yachts).indexOf(currentPlayer);
   const isMyTurn = playerId === game.setup_order[game.current_player_index];
 
+  const currentHeading = game.yachts[currentPlayer].heading;
+  const windRelativeToHeading =
+    ((game.wind_direction - currentHeading) % 360 + 360) % 360;
+  const tack =
+    windRelativeToHeading === 0 || windRelativeToHeading === 180
+      ? null
+      : windRelativeToHeading < 180
+        ? 'Starboard'
+        : 'Port';
+
   const [highlightedCell, setHighlightedCell] = useState<{
     x: number;
     y: number;
@@ -58,6 +68,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
 
   const [showRules, setShowRules] = useState(false);
   const [puffMode, setPuffMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const raiseSpinnaker = async () => {
     if (!isMyTurn) return false;
@@ -71,11 +82,12 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
     );
 
     if (!response.ok) {
-      const errMsg = `There was an error raising spinnaker for player ${currentPlayer}`;
-      console.error(errMsg);
-      throw new Error(errMsg);
+      const data = await response.json();
+      setError(data.detail ?? 'An unexpected error occurred');
+      return;
     }
 
+    setError(null);
     setGame(await response.json());
   };
 
@@ -92,11 +104,12 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
     );
 
     if (!response.ok) {
-      const errMsg = `There was an error lowering spinnaker for player ${currentPlayer}`;
-      console.error(errMsg);
-      throw new Error(errMsg);
+      const data = await response.json();
+      setError(data.detail ?? 'An unexpected error occurred');
+      return;
     }
 
+    setError(null);
     setGame(await response.json());
   };
 
@@ -109,11 +122,11 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
     );
 
     if (!response.ok) {
-      const errMsg = `There was an error starting the round for gameId ${game.id}`;
-      console.error(errMsg);
-      throw new Error(errMsg);
+      const data = await response.json();
+      setError(data.detail ?? 'An unexpected error occurred');
+      return;
     }
-
+    setError(null);
     setGame(await response.json());
   };
 
@@ -137,11 +150,12 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
       );
 
       if (!response.ok) {
-        const errMsg = `There was an error using puff for player ${currentPlayer}`;
-        console.error(errMsg);
-        throw new Error(errMsg);
+        const data = await response.json();
+        setError(data.detail ?? 'An unexpected error occurred');
+        return;
       }
 
+      setError(null);
       setGame(await response.json());
       setHighlightedCell(null);
       setPuffMode(false);
@@ -161,11 +175,12 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
     );
 
     if (!response.ok) {
-      const errMsg = `There was an error selecting position for player ${game.setup_order[game.current_player_index]}`;
-      console.error(errMsg);
-      throw new Error(errMsg);
+      const data = await response.json();
+      setError(data.detail ?? 'An unexpected error occurred');
+      return;
     }
 
+    setError(null);
     setGame(await response.json());
     setHighlightedCell(null);
   };
@@ -226,7 +241,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
       />
 
       <div className="flex flex-col gap-3 bg-[#1e2d3d] px-8 py-4 w-full overflow-hidden">
-        <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center justify-center gap-4">
           <div className="flex flex-col items-center justify-between min-h-14">
             <span className="text-xs text-gray-400 uppercase tracking-wider">
               Wind
@@ -263,12 +278,21 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
 
           <div className="flex flex-col items-center justify-between min-h-14">
             <span className="text-xs text-gray-400 uppercase tracking-wider text-center">
-              {game.setup_order[game.current_player_index]}
-              <br />
               Legs Remaining
             </span>
             <span className="text-white font-bold text-lg">
               {game.legs_remaining}
+            </span>
+          </div>
+
+          <div className="w-px h-14 bg-gray-600" />
+
+          <div className="flex flex-col items-center justify-between min-h-14">
+            <span className="text-xs text-gray-400 uppercase tracking-wider">
+              Tack
+            </span>
+            <span className="font-bold text-lg text-white">
+              {tack ?? '—'}
             </span>
           </div>
 
@@ -327,6 +351,12 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
           )}
         </div>
 
+        {error && (
+          <div className="text-red-400 text-sm text-center py-1 border border-red-800 rounded px-3">
+            {error}
+          </div>
+        )}
+
         <div className="border-t border-gray-700 pt-3 flex items-center justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span className="text-xs text-gray-400 uppercase tracking-wider mr-2">
@@ -375,7 +405,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
                 Objective
               </p>
               <p>
-                Round all three course marks and cross the finish line first.
+                Round the course mark and cross the finish line first.
               </p>
             </div>
             <div>
@@ -393,19 +423,19 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
               </p>
               <ul className="space-y-0.5">
                 <li>
-                  Broad Reaching —{' '}
+                  Broad Reaching —
                   <span className="text-white font-medium">3 spaces</span>
                 </li>
                 <li>
-                  Beam Reaching / Running —{' '}
+                  Beam Reaching / Running —
                   <span className="text-white font-medium">2 spaces</span>
                 </li>
                 <li>
-                  Beating —{' '}
+                  Beating —
                   <span className="text-white font-medium">1 space</span>
                 </li>
                 <li>
-                  Luffing (into wind) —{' '}
+                  Luffing (into wind) —
                   <span className="text-white font-medium">0 spaces</span>
                 </li>
               </ul>
@@ -419,6 +449,36 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
                 <li>All legs must be completed each turn.</li>
                 <li>No leg may be retraced within the same turn.</li>
               </ul>
+            </div>
+            <div>
+              <p className="text-gray-400 uppercase tracking-wider mb-1">
+                Tacking & Jibing
+              </p>
+              <p>
+                Crossing the wind axis costs one extra leg. Tacking swings the
+                bow through the wind; jibing swings the stern. Plan your
+                heading changes carefully.
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-400 uppercase tracking-wider mb-1">
+                Blanketing
+              </p>
+              <p>
+                A yacht directly to windward blankets you — you lose your
+                entire turn. A yacht with spinnaker two spaces to windward
+                costs you one leg.
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-400 uppercase tracking-wider mb-1">
+                Right of Way
+              </p>
+              <p>
+                A port-tack yacht must keep clear of a starboard-tack yacht.
+                You cannot move into the immediate path of a starboard-tack
+                yacht while on port tack.
+              </p>
             </div>
           </div>
         )}

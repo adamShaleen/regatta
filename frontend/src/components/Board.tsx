@@ -18,7 +18,12 @@ export const YACHT_COLORS = [
   '#f1c40f'
 ];
 
-export const Board = ({ board, yachts, highlightedCell, marksRounded }: BoardProps) => {
+export const Board = ({
+  board,
+  yachts,
+  highlightedCell,
+  marksRounded
+}: BoardProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -27,15 +32,25 @@ export const Board = ({ board, yachts, highlightedCell, marksRounded }: BoardPro
     const context = canvasRef.current.getContext('2d');
     if (!context) return;
 
-    const drawSailboat = (cx: number, cy: number, color: string) => {
+    const drawSailboat = (
+      cx: number,
+      cy: number,
+      color: string,
+      heading: number
+    ) => {
+      const angle = (heading - 90) * (Math.PI / 180);
+      context.save();
+      context.translate(cx, cy);
+      context.rotate(angle);
+
       const s = CELL_SIZE * 0.4;
       const yo = s * 0.175; // shift down to vertically center the shape
 
       // sail
       context.beginPath();
-      context.moveTo(cx, cy - s * 1.1 + yo);
-      context.lineTo(cx, cy + s * 0.3 + yo);
-      context.lineTo(cx + s * 1.0, cy + s * 0.3 + yo);
+      context.moveTo(0, -s * 1.1 + yo);
+      context.lineTo(0, s * 0.3 + yo);
+      context.lineTo(s * 1.0, s * 0.3 + yo);
       context.closePath();
       context.fillStyle = 'rgba(255, 255, 255, 0.95)';
       context.fill();
@@ -45,16 +60,18 @@ export const Board = ({ board, yachts, highlightedCell, marksRounded }: BoardPro
 
       // hull
       context.beginPath();
-      context.moveTo(cx - s * 0.65, cy + s * 0.3 + yo);
-      context.lineTo(cx + s * 0.9, cy + s * 0.3 + yo);
-      context.lineTo(cx + s * 0.55, cy + s * 0.75 + yo);
-      context.lineTo(cx - s * 0.45, cy + s * 0.75 + yo);
+      context.moveTo(-s * 0.65, s * 0.3 + yo);
+      context.lineTo(s * 0.9, s * 0.3 + yo);
+      context.lineTo(s * 0.55, s * 0.75 + yo);
+      context.lineTo(-s * 0.45, s * 0.75 + yo);
       context.closePath();
       context.fillStyle = color;
       context.fill();
       context.strokeStyle = 'rgba(255, 255, 255, 0.8)';
       context.lineWidth = 1;
       context.stroke();
+
+      context.restore();
     };
 
     // ocean background
@@ -81,7 +98,8 @@ export const Board = ({ board, yachts, highlightedCell, marksRounded }: BoardPro
 
     // course marks
     board.course_marks.forEach(({ x, y }) => {
-      const rounded = marksRounded?.some((m) => m.x === x && m.y === y) ?? false;
+      const rounded =
+        marksRounded?.some((m) => m.x === x && m.y === y) ?? false;
       context.beginPath();
       context.arc(
         x * CELL_SIZE + CELL_SIZE / 2,
@@ -119,7 +137,7 @@ export const Board = ({ board, yachts, highlightedCell, marksRounded }: BoardPro
       const cx = position.x * CELL_SIZE + CELL_SIZE / 2;
       const cy = position.y * CELL_SIZE + CELL_SIZE / 2;
 
-      drawSailboat(cx, cy, color);
+      drawSailboat(cx, cy, color, yacht.heading);
     });
 
     if (highlightedCell) {

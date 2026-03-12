@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 
 from regatta.core.game_actions import (
     add_player,
@@ -29,6 +30,15 @@ def make_game(**overrides) -> Game:
         "wind_direction": WindDirection.EAST,
     }
     return Game(**{**defaults, **overrides})
+
+
+def make_racing_game(position: Position, heading: Heading, legs: int = 3) -> Game:
+    return make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=legs,
+        yachts={"player_1": Yacht(position, heading)},
+    )
 
 
 @pytest.mark.parametrize(
@@ -156,7 +166,11 @@ def test_start_round_sad_path():
 
 
 def test_start_round_happy():
-    before_start = make_game(phase=GamePhase.RACING)
+    before_start = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        yachts={"player_1": Yacht(Position(1, 1), Heading.EAST)},
+    )
     started = start_round(before_start)
 
     assert not started.has_used_puff
@@ -239,8 +253,13 @@ def test_move_leg_rounds_mark():
     # Mark at (5,2). Pre-load 7 history positions whose convex hull encloses the mark.
     # The 8th position (added on the first step of the move) triggers the hull check → rounded.
     enclosing_history = (
-        Position(3, 0), Position(7, 0), Position(7, 4),
-        Position(5, 4), Position(3, 4), Position(3, 2), Position(5, 0),
+        Position(3, 0),
+        Position(7, 0),
+        Position(7, 4),
+        Position(5, 4),
+        Position(3, 4),
+        Position(3, 2),
+        Position(5, 0),
     )  # 7 positions; convex hull is (3,0)-(7,0)-(7,4)-(3,4), which contains (5,2)
     game = make_game(
         phase=GamePhase.RACING,
@@ -356,6 +375,120 @@ def test_move_leg_spinnaker_bonus():
     after_move = move_leg(game, "player_1", Heading.WEST)
 
     assert after_move.yachts["player_1"].position == Position(0, 0)
+
+
+def test_move_leg_tack_costs_extra_leg():
+    # Wind EAST, old heading NORTH_EAST (starboard), new heading SOUTH (port) → tack
+    # SOUTH + wind EAST = beam reach = 2 spaces, but costs 2 legs total
+    game = make_racing_game(Position(4, 1), Heading.NORTH_EAST, legs=3)
+    after = move_leg(game, "player_1", Heading.SOUTH)
+    assert after.legs_remaining == 1  # 3 - 1 move - 1 penalty
+
+
+def test_move_leg_jibe_costs_extra_leg():
+    # Wind EAST, old heading NORTH_WEST (starboard), new heading SOUTH_WEST (port) → jibe
+    # Crosses through WEST (downwind). SW = broad reach = 3 spaces
+    game = make_racing_game(Position(6, 2), Heading.NORTH_WEST, legs=3)
+    after = move_leg(game, "player_1", Heading.SOUTH_WEST)
+    assert after.legs_remaining == 1  # 3 - 1 move - 1 penalty
+
+
+def test_move_leg_tack_with_one_leg_ends_turn():
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1", "player_2"],
+        current_player_index=0,
+        legs_remaining=1,
+        yachts={
+            "player_1": Yacht(Position(4, 1), Heading.NORTH_EAST),
+            "player_2": Yacht(Position(9, 5), Heading.EAST),
+        },
+    )
+    after = move_leg(game, "player_1", Heading.SOUTH)
+    assert after.current_player_index == 1  # end_turn fired, advanced to player_2
+
+
+def test_move_leg_persists_heading():
+    game = make_racing_game(Position(4, 1), Heading.NORTH_EAST)
+    after = move_leg(game, "player_1", Heading.SOUTH)
+    assert after.yachts["player_1"].heading == Heading.SOUTH
+
+
+def test_move_leg_no_penalty_same_tack():
+    # Wind EAST, NORTH → NORTH_EAST both starboard tack, no penalty
+    game = make_racing_game(Position(3, 2), Heading.NORTH, legs=3)
+    after = move_leg(game, "player_1", Heading.NORTH_EAST)
+    assert after.legs_remaining == 2  # only 1 leg consumed
+
+
+# Right-of-way tests.
+# Wind EAST: starboard-tack headings = NORTH, NORTH_EAST, NORTH_WEST
+#            port-tack headings = SOUTH, SOUTH_EAST, SOUTH_WEST
+
+
+def test_move_leg_right_of_way_violation():
+    # player_2 at (5,4) heading NORTH_WEST (starboard) → next step = (4,3)
+    # player_1 at (3,2) heading SOUTH_EAST (port, beating = 1 space) → destination (4,3)
+    # → right-of-way violation
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=1,
+        yachts={
+            "player_1": Yacht(Position(3, 2), Heading.SOUTH_EAST),
+            "player_2": Yacht(Position(5, 4), Heading.NORTH_WEST),
+        },
+    )
+    with pytest.raises(ValueError, match="Right-of-way violation"):
+        move_leg(game, "player_1", Heading.SOUTH_EAST)
+
+
+def test_move_leg_no_right_of_way_violation_different_destination():
+    # Same setup but player_1 moves SOUTH (beam reach 2 spaces) → (3,4), not (4,3)
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=1,
+        yachts={
+            "player_1": Yacht(Position(3, 2), Heading.SOUTH),
+            "player_2": Yacht(Position(5, 4), Heading.NORTH_WEST),
+        },
+    )
+    after = move_leg(game, "player_1", Heading.SOUTH)
+    assert after.yachts["player_1"].position == Position(3, 4)
+
+
+def test_move_leg_starboard_tack_no_right_of_way_check():
+    # player_1 (starboard, NORTH_EAST beating 1 space) lands at (4,3)
+    # player_2 (starboard, NORTH_WEST) next step is also (4,3)
+    # No violation because player_1 is starboard tack
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=1,
+        yachts={
+            "player_1": Yacht(Position(3, 4), Heading.NORTH_EAST),
+            "player_2": Yacht(Position(5, 4), Heading.NORTH_WEST),
+        },
+    )
+    after = move_leg(game, "player_1", Heading.NORTH_EAST)
+    assert after.yachts["player_1"].position == Position(4, 3)
+
+
+def test_move_leg_no_violation_when_other_yacht_also_port_tack():
+    # player_1 (port, SOUTH_EAST) lands at (3,3) = player_2's next step
+    # player_2 (port, SOUTH) → opposite tack rule doesn't apply
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1"],
+        legs_remaining=1,
+        yachts={
+            "player_1": Yacht(Position(2, 2), Heading.SOUTH_EAST),
+            "player_2": Yacht(Position(3, 2), Heading.SOUTH),
+        },
+    )
+    after = move_leg(game, "player_1", Heading.SOUTH_EAST)
+    assert after.yachts["player_1"].position == Position(3, 3)
 
 
 @pytest.mark.parametrize(
@@ -589,3 +722,68 @@ def test_lower_spinnaker_happy():
 
     assert not after_lowered.yachts["player_1"].spinnaker
     assert after_lowered.legs_remaining == 1  # was 2, cost 1 leg
+
+
+# Wind defaults to EAST in make_game.
+# Windward of (3,3) with EAST wind = 1 step east = (4,3); 2 steps = (5,3).
+def test_start_round_no_blanket():
+    # Other yacht not at windward position — no penalty
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1", "player_2"],
+        current_player_index=0,
+        yachts={
+            "player_1": Yacht(Position(3, 3), Heading.EAST),
+            "player_2": Yacht(Position(5, 5), Heading.EAST),
+        },
+    )
+    with patch("regatta.core.game_actions.random.randint", return_value=3):
+        result = start_round(game)
+    assert result.legs_remaining == 3
+
+
+def test_start_round_full_blanket():
+    # player_2 is 1 space directly to windward — full turn lost, advances to player_2
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1", "player_2"],
+        current_player_index=0,
+        yachts={
+            "player_1": Yacht(Position(3, 3), Heading.EAST),
+            "player_2": Yacht(Position(4, 3), Heading.EAST),
+        },
+    )
+    result = start_round(game)
+    assert result.current_player_index == 1
+
+
+def test_start_round_partial_blanket_with_spinnaker():
+    # player_2 with spinnaker is 2 spaces to windward — player_1 loses 1 leg
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1", "player_2"],
+        current_player_index=0,
+        yachts={
+            "player_1": Yacht(Position(3, 3), Heading.EAST),
+            "player_2": Yacht(Position(5, 3), Heading.EAST, spinnaker=True),
+        },
+    )
+    with patch("regatta.core.game_actions.random.randint", return_value=3):
+        result = start_round(game)
+    assert result.legs_remaining == 2  # 3 - 1 penalty
+
+
+def test_start_round_no_partial_blanket_without_spinnaker():
+    # player_2 without spinnaker at 2 spaces windward — no penalty
+    game = make_game(
+        phase=GamePhase.RACING,
+        setup_order=["player_1", "player_2"],
+        current_player_index=0,
+        yachts={
+            "player_1": Yacht(Position(3, 3), Heading.EAST),
+            "player_2": Yacht(Position(5, 3), Heading.EAST, spinnaker=False),
+        },
+    )
+    with patch("regatta.core.game_actions.random.randint", return_value=3):
+        result = start_round(game)
+    assert result.legs_remaining == 3

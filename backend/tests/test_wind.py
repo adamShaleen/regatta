@@ -4,7 +4,9 @@ from regatta.models.wind import (
     Heading,
     PointOfSail,
     WindDirection,
+    detect_maneuver,
     get_point_of_sail,
+    get_tack,
 )
 
 
@@ -54,3 +56,56 @@ def test_get_point_of_sail(input_a, input_b, expected):
 )
 def test_point_of_sail_speed(input_a, expected):
     assert input_a.speed == expected
+
+
+@pytest.mark.parametrize(
+    "input_a, input_b, expected",
+    [
+        (WindDirection.NORTH, Heading.NORTH, None),
+        (WindDirection.NORTH, Heading.SOUTH, None),
+        (WindDirection.NORTH, Heading.NORTH_EAST, "port"),
+        (WindDirection.NORTH, Heading.NORTH_WEST, "starboard"),
+    ],
+)
+def test_get_tack(input_a, input_b, expected):
+    assert get_tack(input_a, input_b) == expected
+
+
+def test_detect_maneuver_same_heading():
+    assert (
+        detect_maneuver(WindDirection.NORTH, Heading.NORTH_EAST, Heading.NORTH_EAST)
+        is None
+    )
+
+
+def test_detect_maneuver_same_tack():
+    assert (
+        detect_maneuver(WindDirection.NORTH, Heading.NORTH_EAST, Heading.EAST) is None
+    )
+
+
+def test_detect_maneuver_tack():
+    assert (
+        detect_maneuver(WindDirection.NORTH, Heading.NORTH_EAST, Heading.NORTH_WEST)
+        == "tack"
+    )
+
+
+def test_detect_maneuver_jibe():
+    assert (
+        detect_maneuver(WindDirection.NORTH, Heading.SOUTH_EAST, Heading.SOUTH_WEST)
+        == "jibe"
+    )
+
+
+def test_detect_maneuver_first_move_no_penalty():
+    assert (
+        detect_maneuver(WindDirection.NORTH, Heading.SOUTH, Heading.SOUTH_EAST) is None
+    )
+
+
+def test_detect_maneuver_beating_to_beating():
+    assert (
+        detect_maneuver(WindDirection.NORTH, Heading.NORTH_WEST, Heading.NORTH_EAST)
+        == "tack"
+    )
