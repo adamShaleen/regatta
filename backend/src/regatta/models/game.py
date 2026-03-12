@@ -34,3 +34,4 @@ class Game:
 
     # End state
     winner: str | None = None
+    last_event: str | None = None

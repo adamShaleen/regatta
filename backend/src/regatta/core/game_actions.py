@@ -79,7 +79,13 @@ def start_round(game: Game) -> Game:
         raise ValueError("Must be in RACING phase")
 
     roll = random.randint(1, 3)
-    game = replace(game, legs_per_turn=roll, legs_remaining=roll, has_used_puff=False)
+    game = replace(
+        game,
+        legs_per_turn=roll,
+        legs_remaining=roll,
+        has_used_puff=False,
+        last_event=None,
+    )
     player_id = game.setup_order[game.current_player_index]
     penalty = _get_blanket_penalty(game, player_id)
 
@@ -89,9 +95,9 @@ def start_round(game: Game) -> Game:
     game = replace(game, legs_remaining=max(0, game.legs_remaining - penalty))
 
     if game.legs_remaining == 0:
-        return end_turn(game)
+        return replace(end_turn(game), last_event="Blanketed! Turn lost.")
 
-    return game
+    return replace(game, last_event="Partially blanketed — 1 leg lost.")
 
 
 def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
@@ -121,7 +127,8 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
     ):
         spaces += 1
 
-    current_marks_rounded = game.yachts[player_id].marks_rounded
+    prev_marks_rounded = game.yachts[player_id].marks_rounded
+    current_marks_rounded = prev_marks_rounded
     current_history = game.yachts[player_id].position_history
 
     next_position = game.yachts[player_id].position
@@ -167,6 +174,7 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
     # Check win condition
     all_marks_rounded = set(game.board.course_marks) <= set(current_marks_rounded)
     on_finish_line = game.board.is_on_starting_line(next_position)
+    newly_rounded = len(current_marks_rounded) > len(prev_marks_rounded)
 
     if all_marks_rounded and on_finish_line:
         return replace(
@@ -175,14 +183,25 @@ def move_leg(game: Game, player_id: str, heading: Heading) -> Game:
             legs_remaining=game.legs_remaining - 1,
             winner=player_id,
             phase=GamePhase.FINISHED,
+            last_event=f"{player_id} wins the race!",
         )
 
     legs_cost = 2 if maneuver else 1
+
+    if newly_rounded:
+        last_event: str | None = "Rounded the mark!"
+    elif maneuver == "tack":
+        last_event = "Tacked — 1 extra leg cost."
+    elif maneuver == "jibe":
+        last_event = "Jibed — 1 extra leg cost."
+    else:
+        last_event = game.last_event
 
     updated_game = replace(
         game,
         yachts=updated_yachts,
         legs_remaining=max(0, game.legs_remaining - legs_cost),
+        last_event=last_event,
     )
 
     if updated_game.legs_remaining == 0:
@@ -255,6 +274,9 @@ def use_puff(game: Game, player_id: str, direction: Heading) -> Game:
                 if is_strictly_inside_hull(hull, mark):
                     current_marks_rounded = current_marks_rounded | {mark}
 
+    newly_rounded = len(current_marks_rounded) > len(player_yacht.marks_rounded)
+    last_event = "Rounded the mark via puff!" if newly_rounded else game.last_event
+
     updated_yacht = (
         player_yacht.with_puff_count(new_puff_count)
         .with_position(new_position)
@@ -263,7 +285,9 @@ def use_puff(game: Game, player_id: str, direction: Heading) -> Game:
     )
     updated_yachts = {**game.yachts, player_id: updated_yacht}
 
-    return replace(game, yachts=updated_yachts, has_used_puff=True)
+    return replace(
+        game, yachts=updated_yachts, has_used_puff=True, last_event=last_event
+    )
 
 
 def raise_spinnaker(game: Game, player_id: str) -> Game:
@@ -342,5 +366,6 @@ def _check_right_of_way(
 
         if destination == starboard_next:
             raise ValueError(
-                "Right-of-way violation: port-tack yacht must keep clear of starboard-tack yacht"
+                "Right-of-way violation: port-tack yacht must keep clear of "
+                "starboard-tack yacht"
             )

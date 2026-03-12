@@ -4,6 +4,13 @@ import { authFetch } from '../utils/api';
 
 export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
   const [playerId, setPlayerId] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const errMsg = (gameId: string, operation: string): string => {
     return `Failed to ${operation} to game with gameId ${gameId}`;
@@ -94,6 +101,13 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
           </div>
         </div>
       )}
+
+      <button
+        onClick={handleCopyLink}
+        className="bg-[#0f1923] hover:bg-[#162330] text-gray-300 border border-gray-600 hover:border-gray-400 font-medium py-2 rounded-lg tracking-wider transition-colors text-sm"
+      >
+        {copied ? '✓ Copied!' : 'Copy Invite Link'}
+      </button>
 
       <button
         disabled={game.players.length < 2}

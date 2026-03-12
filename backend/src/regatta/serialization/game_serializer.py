@@ -97,6 +97,7 @@ def serialize_game(game: Game) -> dict:
         "legs_remaining": game.legs_remaining,
         "has_used_puff": game.has_used_puff,
         "winner": game.winner,
+        "last_event": game.last_event,
     }
 
 
@@ -117,4 +118,5 @@ def deserialize_game(d: dict) -> Game:
         legs_remaining=d["legs_remaining"],
         has_used_puff=d["has_used_puff"],
         winner=d["winner"],
+        last_event=d.get("last_event"),
     )

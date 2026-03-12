@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PhaseProps } from '../types/models';
-import { CELL_SIZE, YACHT_COLORS } from './Board';
+import { YACHT_COLORS } from './Board';
 import { InteractiveBoard } from './InteractiveBoard';
+import { SailCompass } from './SailCompass';
 import { authFetch } from '../utils/api';
 
 const HEADING_MAP: Record<string, number> = {
@@ -69,6 +70,20 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   const [showRules, setShowRules] = useState(false);
   const [puffMode, setPuffMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Responsive cell size: fit the board to the viewport width
+  const [cellSize, setCellSize] = useState(() =>
+    Math.max(20, Math.min(48, Math.floor((window.innerWidth - 48) / game.board.grid.width)))
+  );
+
+  useEffect(() => {
+    const onResize = () =>
+      setCellSize(
+        Math.max(20, Math.min(48, Math.floor((window.innerWidth - 48) / game.board.grid.width)))
+      );
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [game.board.grid.width]);
 
   const raiseSpinnaker = async () => {
     if (!isMyTurn) return false;
@@ -226,10 +241,15 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
     setHighlightedCell({ x: destX, y: destY });
   };
 
+  // Dashed preview path from yacht's current position to hovered destination
+  const previewPath = highlightedCell
+    ? { from: currentPlayerPosition.position, to: highlightedCell }
+    : null;
+
   return (
     <div
       className="flex flex-col items-center gap-4"
-      style={{ width: game.board.grid.width * CELL_SIZE }}
+      style={{ width: game.board.grid.width * cellSize }}
     >
       <InteractiveBoard
         board={game.board}
@@ -238,10 +258,14 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
         onCellHover={handleCellHover}
         highlightedCell={highlightedCell}
         marksRounded={game.yachts[currentPlayer].marks_rounded}
+        cellSize={cellSize}
+        previewPath={previewPath}
+        disabled={!isMyTurn}
+        waitingFor={currentPlayer}
       />
 
       <div className="flex flex-col gap-3 bg-[#1e2d3d] px-8 py-4 w-full overflow-hidden">
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 flex-wrap">
           <div className="flex flex-col items-center justify-between min-h-14">
             <span className="text-xs text-gray-400 uppercase tracking-wider">
               Wind
@@ -294,6 +318,18 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
             <span className="font-bold text-lg text-white">
               {tack ?? '—'}
             </span>
+          </div>
+
+          <div className="w-px h-14 bg-gray-600" />
+
+          <div className="flex flex-col items-center justify-between min-h-[56px]">
+            <span className="text-xs text-gray-400 uppercase tracking-wider">
+              Speed
+            </span>
+            <SailCompass
+              windDirection={game.wind_direction}
+              heading={currentHeading}
+            />
           </div>
 
           {game.legs_remaining === 0 && (
@@ -351,6 +387,12 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
           )}
         </div>
 
+        {game.last_event && (
+          <div className="text-sm text-center py-1 px-3 rounded border border-cyan-700 text-cyan-300 bg-cyan-950/50">
+            {game.last_event}
+          </div>
+        )}
+
         {error && (
           <div className="text-red-400 text-sm text-center py-1 border border-red-800 rounded px-3">
             {error}
@@ -370,8 +412,8 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
               <div className="w-5 h-0.5 bg-yellow-400" />
               <span className="text-xs text-gray-300">Start / Finish</span>
             </div>
-            {Object.keys(game.yachts).map((playerId, index) => (
-              <div key={playerId} className="flex items-center gap-1.5">
+            {Object.keys(game.yachts).map((pId, index) => (
+              <div key={pId} className="flex items-center gap-1.5">
                 <svg width="28" height="25" viewBox="0 0 18 16">
                   <polygon
                     points="8,3.4 8,10.4 13,10.4"
@@ -386,7 +428,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
                     strokeWidth="0.8"
                   />
                 </svg>
-                <span className="text-xs text-gray-300">{playerId}</span>
+                <span className="text-xs text-gray-300">{pId}</span>
               </div>
             ))}
           </div>

@@ -63,3 +63,4 @@ class GameResponse(BaseModel):
     legs_remaining: int
     has_used_puff: bool
     winner: str | None
+    last_event: str | None
