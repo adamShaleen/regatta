@@ -36,6 +36,12 @@ export const SetupPhase = ({ game, setGame, playerId }: PhaseProps) => {
     setGame(await response.json());
   };
 
+  const sortedYachts = Object.fromEntries(
+    game.setup_order
+      .filter((p) => p in game.yachts)
+      .map((p) => [p, game.yachts[p]])
+  );
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="bg-[#1e2d3d] rounded-lg px-6 py-3 flex items-center gap-6">
@@ -69,7 +75,7 @@ export const SetupPhase = ({ game, setGame, playerId }: PhaseProps) => {
 
       <InteractiveBoard
         board={game.board}
-        yachts={game.yachts}
+        yachts={sortedYachts}
         onCellClick={handleCellClick}
       />
     </div>

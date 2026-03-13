@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 export const LoginPage = () => {
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string })?.from ?? '/';
 
   const handleLogin = async (): Promise<void> => {
     setError('');
@@ -27,7 +29,7 @@ export const LoginPage = () => {
       const data = await response.json();
 
       localStorage.setItem('regatta_token', data.access_token);
-      navigate('/');
+      navigate(from, { replace: true });
     } catch (error) {
       console.error('There was an error calling handleLogin', { error });
       setError('Invalid password');

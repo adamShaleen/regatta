@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from regatta.core.game_actions import (
     add_player,
@@ -157,7 +158,6 @@ def test_choose_starting_position_happy():
     all_players = choose_starting_position(two_players, "player_3", Position(2, 0))
     assert "player_3" in all_players.yachts
     assert all_players.phase == GamePhase.RACING
-    assert all_players.current_player_index == 0
 
 
 def test_start_round_sad_path():

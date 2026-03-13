@@ -67,9 +67,10 @@ def choose_starting_position(game: Game, player_id: str, position: Position) -> 
     new_index = game.current_player_index + 1
 
     if new_index >= len(game.setup_order):
-        return replace(
+        game_ready_to_start = replace(
             game, yachts=updated_yachts, phase=GamePhase.RACING, current_player_index=0
         )
+        return start_round(game_ready_to_start)
     else:
         return replace(game, yachts=updated_yachts, current_player_index=new_index)
 

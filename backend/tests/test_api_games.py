@@ -75,9 +75,6 @@ async def test_full_game_happy_path(client: AsyncClient):
     assert position_2.status_code == 200
     assert position_2.json()["phase"] == "RACING"
 
-    start_round: Response = await client.post(f"/games/{game_id}/round")
-    assert start_round.status_code == 200
-
     await exhaust_legs(client, game_id, ordered_players[0], 45)
     await exhaust_legs(client, game_id, ordered_players[1], 45)
 

@@ -49,12 +49,16 @@ const WIND_DIRECTION_LABELS: Record<number, string> = {
 export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   const currentPlayer = game.setup_order[game.current_player_index];
   const currentPlayerPosition = game.yachts[currentPlayer];
-  const colorIndex = Object.keys(game.yachts).indexOf(currentPlayer);
+  const colorIndex = game.setup_order.indexOf(currentPlayer);
   const isMyTurn = playerId === game.setup_order[game.current_player_index];
+
+  const sortedYachts = Object.fromEntries(
+    game.setup_order.map((p) => [p, game.yachts[p]])
+  );
 
   const currentHeading = game.yachts[currentPlayer].heading;
   const windRelativeToHeading =
-    ((game.wind_direction - currentHeading) % 360 + 360) % 360;
+    (((game.wind_direction - currentHeading) % 360) + 360) % 360;
   const tack =
     windRelativeToHeading === 0 || windRelativeToHeading === 180
       ? null
@@ -73,13 +77,22 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
 
   // Responsive cell size: fit the board to the viewport width
   const [cellSize, setCellSize] = useState(() =>
-    Math.max(20, Math.min(48, Math.floor((window.innerWidth - 48) / game.board.grid.width)))
+    Math.max(
+      20,
+      Math.min(48, Math.floor((window.innerWidth - 48) / game.board.grid.width))
+    )
   );
 
   useEffect(() => {
     const onResize = () =>
       setCellSize(
-        Math.max(20, Math.min(48, Math.floor((window.innerWidth - 48) / game.board.grid.width)))
+        Math.max(
+          20,
+          Math.min(
+            48,
+            Math.floor((window.innerWidth - 48) / game.board.grid.width)
+          )
+        )
       );
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
@@ -124,23 +137,6 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
       return;
     }
 
-    setError(null);
-    setGame(await response.json());
-  };
-
-  const startRound = async () => {
-    if (!isMyTurn) return false;
-
-    const response = await authFetch(
-      `${import.meta.env.VITE_API_URL}/games/${game.id}/round`,
-      { method: 'POST' }
-    );
-
-    if (!response.ok) {
-      const data = await response.json();
-      setError(data.detail ?? 'An unexpected error occurred');
-      return;
-    }
     setError(null);
     setGame(await response.json());
   };
@@ -228,12 +224,16 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
       360 - Math.abs(game.wind_direction - heading)
     );
 
-    const speed = ANGLE_TO_SPEED[angle];
+    const baseSpeed = ANGLE_TO_SPEED[angle];
 
-    if (speed === 0) {
+    if (baseSpeed === 0) {
       setHighlightedCell(null);
       return;
     }
+
+    const spinnaker = game.yachts[currentPlayer].spinnaker;
+    const speed =
+      spinnaker && (angle === 135 || angle === 180) ? baseSpeed + 1 : baseSpeed;
 
     const { dx: stepX, dy: stepY } = HEADING_DELTAS[heading];
     const destX = currentPlayerPosition.position.x + stepX * speed;
@@ -253,7 +253,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
     >
       <InteractiveBoard
         board={game.board}
-        yachts={game.yachts}
+        yachts={sortedYachts}
         onCellClick={handleCellClick}
         onCellHover={handleCellHover}
         highlightedCell={highlightedCell}
@@ -315,9 +315,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
             <span className="text-xs text-gray-400 uppercase tracking-wider">
               Tack
             </span>
-            <span className="font-bold text-lg text-white">
-              {tack ?? '—'}
-            </span>
+            <span className="font-bold text-lg text-white">{tack ?? '—'}</span>
           </div>
 
           <div className="w-px h-14 bg-gray-600" />
@@ -331,19 +329,6 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
               heading={currentHeading}
             />
           </div>
-
-          {game.legs_remaining === 0 && (
-            <>
-              <div className="w-px h-10 bg-gray-600" />
-              <button
-                disabled={!isMyTurn}
-                onClick={startRound}
-                className="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold px-6 py-2 rounded-lg tracking-wider transition-colors"
-              >
-                START ROUND
-              </button>
-            </>
-          )}
 
           {game.legs_remaining > 0 && (
             <>
@@ -412,7 +397,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
               <div className="w-5 h-0.5 bg-yellow-400" />
               <span className="text-xs text-gray-300">Start / Finish</span>
             </div>
-            {Object.keys(game.yachts).map((pId, index) => (
+            {game.setup_order.map((pId, index) => (
               <div key={pId} className="flex items-center gap-1.5">
                 <svg width="28" height="25" viewBox="0 0 18 16">
                   <polygon
@@ -446,9 +431,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
               <p className="text-gray-400 uppercase tracking-wider mb-1">
                 Objective
               </p>
-              <p>
-                Round the course mark and cross the finish line first.
-              </p>
+              <p>Round the course mark and cross the finish line first.</p>
             </div>
             <div>
               <p className="text-gray-400 uppercase tracking-wider mb-1">
@@ -498,8 +481,8 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
               </p>
               <p>
                 Crossing the wind axis costs one extra leg. Tacking swings the
-                bow through the wind; jibing swings the stern. Plan your
-                heading changes carefully.
+                bow through the wind; jibing swings the stern. Plan your heading
+                changes carefully.
               </p>
             </div>
             <div>
@@ -507,9 +490,9 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
                 Blanketing
               </p>
               <p>
-                A yacht directly to windward blankets you — you lose your
-                entire turn. A yacht with spinnaker two spaces to windward
-                costs you one leg.
+                A yacht directly to windward blankets you — you lose your entire
+                turn. A yacht with spinnaker two spaces to windward costs you
+                one leg.
               </p>
             </div>
             <div>
@@ -517,9 +500,9 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
                 Right of Way
               </p>
               <p>
-                A port-tack yacht must keep clear of a starboard-tack yacht.
-                You cannot move into the immediate path of a starboard-tack
-                yacht while on port tack.
+                A port-tack yacht must keep clear of a starboard-tack yacht. You
+                cannot move into the immediate path of a starboard-tack yacht
+                while on port tack.
               </p>
             </div>
           </div>
