@@ -22,35 +22,78 @@ This is a learning project focused on building a real-world application with Pyt
 
 - Python 3.13+
 - Node.js 22+
+- PostgreSQL (running locally)
 
-### Setup
+### First-Time Setup
+
+**Backend:**
 
 ```bash
-# Backend
 cd backend
-/usr/local/opt/python@3.13/bin/python3.13 -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+```
 
-# Frontend
+Create `backend/.env`:
+
+```
+DATABASE_URL=postgresql+asyncpg://localhost/regatta
+JWT_SECRET_KEY=<generate a random secret>
+SHARED_PASSWORD=<choose a password for the app>
+```
+
+Create the database and run migrations:
+
+```bash
+createdb regatta
+createdb regatta_test   # for tests
+cd backend && .venv/bin/alembic upgrade head
+```
+
+**Frontend:**
+
+```bash
 cd frontend
 npm install
 ```
 
-### Commands
+Create `frontend/.env.local`:
 
-All commands run from project root:
+```
+VITE_API_URL=http://localhost:8000
+```
 
-| Command                             | Description                          |
-| ----------------------------------- | ------------------------------------ |
-| `make test-backend`                 | Run backend tests                    |
-| `make lint-backend`                 | Lint backend code                    |
-| `make format-backend`               | Format backend code                  |
-| `make run-backend`                  | Start backend server                 |
-| `make test-frontend`                | Run frontend tests                   |
-| `make lint-frontend`                | Lint frontend code                   |
-| `make format-frontend`              | Format frontend code                 |
-| `uvicorn regatta.main:app --reload` | Run backend (from backend directory) |
+### Running the App
+
+Start the backend and frontend in separate terminals:
+
+```bash
+# Terminal 1 — backend (from project root)
+make run-backend
+
+# Terminal 2 — frontend
+cd frontend && npm run dev
+```
+
+The app will be available at `http://localhost:5173`.
+
+### All Commands
+
+Run from project root unless noted:
+
+| Command                    | Description                      |
+| -------------------------- | -------------------------------- |
+| `make run-backend`         | Start backend server             |
+| `make test-backend`        | Run backend tests                |
+| `make lint-backend`        | Lint backend code (ruff)         |
+| `make format-backend`      | Format backend code (ruff)       |
+| `make typecheck-backend`   | Type-check backend (pyright)     |
+| `make test-backend-file FILE=test_foo.py` | Run a single test file |
+| `cd frontend && npm run dev`   | Start frontend dev server    |
+| `cd frontend && npm run build` | Build frontend for production |
+| `cd frontend && npm run lint`  | Lint frontend code           |
+| `cd frontend && npm run format` | Format frontend code        |
 
 ## Game Rules
 

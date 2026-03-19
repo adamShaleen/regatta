@@ -4,6 +4,7 @@ import { YACHT_COLORS } from './Board';
 import { InteractiveBoard } from './InteractiveBoard';
 import { SailCompass } from './SailCompass';
 import { authFetch } from '../utils/api';
+import { LoadingButton } from './LoadingButton';
 
 const HEADING_MAP: Record<string, number> = {
   '0,-1': 0, // NORTH
@@ -99,7 +100,8 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   }, [game.board.grid.width]);
 
   const raiseSpinnaker = async () => {
-    if (!isMyTurn) return false;
+    if (!isMyTurn) return;
+
     const response = await authFetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/spinnaker/raise`,
       {
@@ -120,7 +122,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
   };
 
   const lowerSpinnaker = async () => {
-    if (!isMyTurn) return false;
+    if (!isMyTurn) return;
 
     const response = await authFetch(
       `${import.meta.env.VITE_API_URL}/games/${game.id}/spinnaker/lower`,
@@ -320,7 +322,7 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
 
           <div className="w-px h-14 bg-gray-600" />
 
-          <div className="flex flex-col items-center justify-between min-h-[56px]">
+          <div className="flex flex-col items-center justify-between min-h-14">
             <span className="text-xs text-gray-400 uppercase tracking-wider">
               Speed
             </span>
@@ -334,38 +336,35 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
             <>
               <div className="w-px h-10 bg-gray-600" />
               {game.yachts[currentPlayer].spinnaker ? (
-                <button
+                <LoadingButton
+                  buttonText="LOWER SPINNAKER"
+                  buttonClickFunction={lowerSpinnaker}
                   disabled={!isMyTurn}
-                  onClick={lowerSpinnaker}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg tracking-wider transition-colors"
-                >
-                  LOWER SPINNAKER
-                </button>
+                  styles="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
+                />
               ) : (
-                <button
+                <LoadingButton
                   disabled={!isMyTurn}
-                  onClick={raiseSpinnaker}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg tracking-wider transition-colors"
-                >
-                  RAISE SPINNAKER
-                </button>
+                  buttonClickFunction={raiseSpinnaker}
+                  buttonText="RAISE SPINNAKER"
+                  styles="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
+                />
               )}
 
               {!game.has_used_puff &&
                 game.yachts[currentPlayer].puff_count > 0 && (
                   <>
                     <div className="w-px h-10 bg-gray-600" />
-                    <button
+                    <LoadingButton
                       disabled={!isMyTurn}
-                      onClick={() => setPuffMode((v) => !v)}
-                      className={`font-bold px-4 py-2 rounded-lg tracking-wider transition-colors ${
+                      buttonText={`USE PUFF (${game.yachts[currentPlayer].puff_count})`}
+                      buttonClickFunction={() => setPuffMode((v) => !v)}
+                      styles={
                         puffMode
-                          ? 'bg-yellow-400 text-gray-900'
-                          : 'bg-blue-600 hover:bg-blue-500 text-white'
-                      }`}
-                    >
-                      USE PUFF ({game.yachts[currentPlayer].puff_count})
-                    </button>
+                          ? 'bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg'
+                          : 'bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg'
+                      }
+                    />
                   </>
                 )}
             </>
@@ -417,12 +416,11 @@ export const RacingPhase = ({ game, setGame, playerId }: PhaseProps) => {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => setShowRules((v) => !v)}
-            className="text-xs text-gray-400 hover:text-white uppercase tracking-wider transition-colors ml-4 shrink-0"
-          >
-            {showRules ? 'Hide Rules ▲' : 'Rules ▼'}
-          </button>
+          <LoadingButton
+            buttonText={showRules ? 'Hide Rules ▲' : 'Rules ▼'}
+            buttonClickFunction={() => setShowRules((v) => !v)}
+            styles="text-xs text-gray-400 hover:text-white uppercase tracking-wider transition-colors ml-4 shrink-0"
+          />
         </div>
 
         {showRules && (

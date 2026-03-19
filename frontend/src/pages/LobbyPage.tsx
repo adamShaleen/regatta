@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { authFetch } from '../utils/api';
+import { LoadingButton } from '../components/LoadingButton';
 
 export const LobbyPage = () => {
   const navigate = useNavigate();
@@ -39,12 +40,11 @@ export const LobbyPage = () => {
         </h1>
 
         <div className="flex flex-col gap-4 w-full">
-          <button
-            onClick={handleCreateGame}
-            className="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold py-3 tracking-wider transition-colors"
-          >
-            CREATE GAME
-          </button>
+          <LoadingButton
+            buttonText="CREATE GAME"
+            buttonClickFunction={handleCreateGame}
+            styles="bg-yellow-400 hover:bg-yellow-300 text-gray-900 py-3"
+          />
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-600" />

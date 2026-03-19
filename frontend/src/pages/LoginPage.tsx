@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { LoadingButton } from '../components/LoadingButton';
 
 export const LoginPage = () => {
   const [password, setPassword] = useState<string>('');
@@ -52,12 +53,11 @@ export const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
           />
-          <button
-            onClick={handleLogin}
-            className="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold py-3 tracking-wider transition-colors"
-          >
-            LOGIN
-          </button>
+          <LoadingButton
+            buttonClickFunction={handleLogin}
+            buttonText="LOGIN"
+            styles="bg-yellow-400 hover:bg-yellow-300 text-gray-900 py-3"
+          />
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
         </div>
       </div>

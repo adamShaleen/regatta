@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PhaseProps } from '../types/models';
 import { authFetch } from '../utils/api';
+import { LoadingButton } from './LoadingButton';
 
 export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
   const [playerId, setPlayerId] = useState('');
@@ -75,13 +76,12 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
           onChange={(e) => setPlayerId(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
         />
-        <button
+        <LoadingButton
+          buttonText="ADD"
+          buttonClickFunction={handleAddPlayer}
           disabled={maxPlayersReached}
-          onClick={handleAddPlayer}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg tracking-wider transition-colors"
-        >
-          ADD
-        </button>
+          styles="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
+        />
       </div>
 
       {game.players.length > 0 && (
@@ -109,13 +109,12 @@ export const LobbyPhase = ({ game, setGame }: PhaseProps) => {
         {copied ? '✓ Copied!' : 'Copy Invite Link'}
       </button>
 
-      <button
+      <LoadingButton
+        buttonText="START GAME"
         disabled={game.players.length < 2}
-        onClick={handleStartSetup}
-        className="bg-yellow-400 hover:bg-yellow-300 disabled:bg-gray-700 disabled:text-gray-500 text-gray-900 font-bold py-2 rounded-lg tracking-wider transition-colors"
-      >
-        START GAME
-      </button>
+        buttonClickFunction={handleStartSetup}
+        styles="bg-yellow-400 hover:bg-yellow-300 disabled:bg-gray-700 disabled:text-gray-500 text-gray-900 py-2 rounded-lg"
+      />
     </div>
   );
 };
